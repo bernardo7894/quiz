@@ -12,7 +12,7 @@ function LoadingScreen({ progress, statusText, error }) {
       <div className="loading-card">
         <div className="loading-icon">🧠</div>
         <h1>AI Trivia Judge</h1>
-        <p className="loading-subtitle">Powered by Qwen2.5-0.5B — running entirely in your browser</p>
+        <p className="loading-subtitle">Powered by Qwen3.5-0.8B — running entirely in your browser</p>
 
         {error ? (
           <div className="loading-error">
@@ -28,7 +28,7 @@ function LoadingScreen({ progress, statusText, error }) {
             </div>
             <p className="loading-status">{statusText || 'Initialising model…'}</p>
             <p className="loading-hint">
-              The AI judge (≈400 MB) is being downloaded and cached in your browser. This only happens once.
+              The AI judge (≈800 MB) is being downloaded and cached in your browser. This only happens once.
             </p>
           </>
         )}
