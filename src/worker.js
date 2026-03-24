@@ -1,4 +1,4 @@
-import { AutoProcessor, Qwen3_5ForConditionalGeneration, env } from '@huggingface/transformers';
+import { AutoProcessor, AutoModelForConditionalGeneration, env } from '@huggingface/transformers';
 
 // Only use remote models from HuggingFace Hub
 env.allowLocalModels = false;
@@ -28,7 +28,7 @@ async function loadModel() {
     try {
       // Load processor and model separately for Qwen3.5 architecture
       processor = await AutoProcessor.from_pretrained(MODEL_ID);
-      model = await Qwen3_5ForConditionalGeneration.from_pretrained(MODEL_ID, {
+      model = await AutoModelForConditionalGeneration.from_pretrained(MODEL_ID, {
         dtype: 'q4',
         device,
         progress_callback: (info) => {
