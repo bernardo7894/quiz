@@ -1,0 +1,82 @@
+[
+  {
+    "Question": "What is the capital of France?",
+    "Expected_Answer": "Paris"
+  },
+  {
+    "Question": "Which planet is known as the Red Planet?",
+    "Expected_Answer": "Mars"
+  },
+  {
+    "Question": "Who painted the Mona Lisa?",
+    "Expected_Answer": "Leonardo da Vinci"
+  },
+  {
+    "Question": "What element has the chemical symbol Au?",
+    "Expected_Answer": "Gold"
+  },
+  {
+    "Question": "In which year did World War II end?",
+    "Expected_Answer": "1945"
+  },
+  {
+    "Question": "What is the largest ocean on Earth?",
+    "Expected_Answer": "Pacific Ocean"
+  },
+  {
+    "Question": "Who wrote Romeo and Juliet?",
+    "Expected_Answer": "William Shakespeare"
+  },
+  {
+    "Question": "What is the speed of light in a vacuum (approx.)?",
+    "Expected_Answer": "300,000 km/s"
+  },
+  {
+    "Question": "How many sides does a hexagon have?",
+    "Expected_Answer": "Six"
+  },
+  {
+    "Question": "Which country invented pizza?",
+    "Expected_Answer": "Italy"
+  },
+  {
+    "Question": "What is the smallest country in the world?",
+    "Expected_Answer": "Vatican City"
+  },
+  {
+    "Question": "Who is the author of the Harry Potter series?",
+    "Expected_Answer": "J.K. Rowling"
+  },
+  {
+    "Question": "What is the chemical formula for water?",
+    "Expected_Answer": "H2O"
+  },
+  {
+    "Question": "Which animal is the fastest land animal?",
+    "Expected_Answer": "Cheetah"
+  },
+  {
+    "Question": "What language is spoken in Brazil?",
+    "Expected_Answer": "Portuguese"
+  },
+  {
+    "Question": "How many bones are in the adult human body?",
+    "Expected_Answer": "206"
+  },
+  {
+    "Question": "What is the tallest mountain in the world?",
+    "Expected_Answer": "Mount Everest"
+  },
+  {
+    "Question": "Which gas do plants absorb from the atmosphere during photosynthesis?",
+    "Expected_Answer": "Carbon dioxide"
+  },
+  {
+    "Question": "What is the currency of Japan?",
+    "Expected_Answer": "Yen"
+  },
+  {
+    "Question": "In Greek mythology, who is the god of the sea?",
+    "Expected_Answer": "Poseidon"
+  }
+]
