@@ -3,6 +3,127 @@ import './App.css';
 
 const TIMER_SECONDS = 600; // 10 minutes
 
+// ─── CSV Parser ───────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return { error: 'CSV must have a header row and at least one question.' };
+
+  function parseLine(line) {
+    const fields = [];
+    let i = 0;
+    while (i < line.length) {
+      if (line[i] === '"') {
+        let j = i + 1;
+        let field = '';
+        while (j < line.length) {
+          if (line[j] === '"' && line[j + 1] === '"') {
+            field += '"';
+            j += 2;
+          } else if (line[j] === '"') {
+            j++;
+            break;
+          } else {
+            field += line[j++];
+          }
+        }
+        fields.push(field);
+        if (line[j] === ',') j++;
+        i = j;
+      } else {
+        const end = line.indexOf(',', i);
+        const stop = end === -1 ? line.length : end;
+        fields.push(line.slice(i, stop).trim());
+        i = stop + 1;
+      }
+    }
+    return fields;
+  }
+
+  const headers = parseLine(lines[0]).map((h) => h.trim().toLowerCase());
+  const hintIdx = headers.indexOf('hint');
+  const answerIdx = headers.indexOf('answer');
+
+  if (hintIdx === -1 || answerIdx === -1) {
+    return { error: 'CSV must have "Hint" and "Answer" columns.' };
+  }
+
+  const questions = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const fields = parseLine(lines[i]);
+    const hint = fields[hintIdx]?.trim();
+    const answer = fields[answerIdx]?.trim();
+    if (hint && answer) questions.push({ question: hint, expectedAnswer: answer });
+  }
+
+  if (questions.length === 0) return { error: 'No valid questions found in CSV.' };
+  return { questions };
+}
+
+// ─── Setup Screen ─────────────────────────────────────────────────────────────
+function SetupScreen({ defaultCount, onStart }) {
+  const [csvQuestions, setCsvQuestions] = useState(null);
+  const [csvError, setCsvError] = useState('');
+  const fileInputRef = useRef(null);
+
+  function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const result = parseCSV(ev.target.result);
+      if (result.error) {
+        setCsvError(result.error);
+        setCsvQuestions(null);
+      } else {
+        setCsvError('');
+        setCsvQuestions(result.questions);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  const questionCount = csvQuestions ? csvQuestions.length : defaultCount;
+  const source = csvQuestions ? 'imported' : 'default';
+
+  return (
+    <div className="loading-screen">
+      <div className="loading-card setup-card">
+        <div className="loading-icon">📋</div>
+        <h1>Set Up Your Quiz</h1>
+        <p className="loading-subtitle">Import your own questions or play with the defaults</p>
+
+        <div className="setup-section">
+          <p className="setup-label">Import questions from CSV</p>
+          <p className="setup-hint">
+            The file must have <code>Hint</code> and <code>Answer</code> column headers.
+          </p>
+          <button className="csv-import-btn" onClick={() => fileInputRef.current?.click()}>
+            📂 Choose CSV File
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,text/csv"
+            style={{ display: 'none' }}
+            onChange={handleFile}
+          />
+          {csvError && <p className="csv-error">{csvError}</p>}
+          {csvQuestions && (
+            <p className="csv-success">
+              ✓ {csvQuestions.length} question{csvQuestions.length !== 1 ? 's' : ''} loaded from CSV
+            </p>
+          )}
+        </div>
+
+        <button className="start-btn" onClick={() => onStart(csvQuestions)}>
+          ▶ Start Quiz ({questionCount} {source} question{questionCount !== 1 ? 's' : ''})
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Loading Screen ───────────────────────────────────────────────────────────
 function LoadingScreen({ progress, statusText, error }) {
   const pct = Math.min(100, Math.round((progress ?? 0) * 100));
@@ -78,6 +199,7 @@ export default function App() {
   const [loadError, setLoadError] = useState(null);
 
   // Quiz state
+  const [gameStarted, setGameStarted] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(null);
   const [inputValue, setInputValue] = useState('');
@@ -162,7 +284,7 @@ export default function App() {
 
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (modelState !== 'ready' || gameOver) return;
+    if (!gameStarted || gameOver) return;
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -174,14 +296,31 @@ export default function App() {
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [modelState, gameOver]);
+  }, [gameStarted, gameOver]);
 
   // ── Focus input when question selected ────────────────────────────────────
   useEffect(() => {
-    if (modelState === 'ready' && selectedIndex !== null) {
+    if (gameStarted && selectedIndex !== null) {
       inputRef.current?.focus();
     }
-  }, [selectedIndex, modelState]);
+  }, [selectedIndex, gameStarted]);
+
+  // ── Start game (from setup screen) ────────────────────────────────────────
+  const handleStart = useCallback((csvQuestions) => {
+    if (csvQuestions) {
+      setQuestions(
+        csvQuestions.map((q, i) => ({
+          id: i,
+          question: q.question,
+          expectedAnswer: q.expectedAnswer,
+          answered: false,
+          status: 'unanswered',
+        }))
+      );
+      setSelectedIndex(0);
+    }
+    setGameStarted(true);
+  }, []);
 
   // ── Submit answer ──────────────────────────────────────────────────────────
   const submitAnswer = useCallback(async () => {
@@ -260,6 +399,10 @@ export default function App() {
         error={modelState === 'error' ? loadError : null}
       />
     );
+  }
+
+  if (!gameStarted) {
+    return <SetupScreen defaultCount={questions.length} onStart={handleStart} />;
   }
 
   const totalQuestions = questions.length;
