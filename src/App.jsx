@@ -96,6 +96,12 @@ export default function App() {
     const worker = new Worker(new URL('./worker.js', import.meta.url), { type: 'module' });
     workerRef.current = worker;
 
+    worker.addEventListener('error', (event) => {
+      const msg = event.error?.message || event.message || 'Worker failed to initialize. Please refresh the page.';
+      setLoadError(msg);
+      setModelState('error');
+    });
+
     worker.addEventListener('message', (event) => {
       const { type, payload } = event.data;
 
