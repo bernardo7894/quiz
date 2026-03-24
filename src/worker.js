@@ -1,21 +1,19 @@
-import { AutoProcessor, AutoModelForConditionalGeneration, env } from '@huggingface/transformers';
+import { pipeline, env } from '@huggingface/transformers';
 
 // Only use remote models from HuggingFace Hub
 env.allowLocalModels = false;
 
-// Qwen3.5-0.8B: sub-1B parameter instruction-tuned model.
-// At q4 quantisation it fits comfortably within browser memory while still
-// being capable enough to follow the strict judge system prompt reliably.
-// Using huggingworld ONNX-converted version for Transformers.js compatibility.
-const MODEL_ID = 'huggingworld/Qwen3.5-0.8B-ONNX';
+// Qwen2.5-1.5B-Instruct: 1.5B parameter instruction-tuned model.
+// Significantly more capable than 0.5B models while still fitting in browser memory.
+// ONNX-converted by onnx-community for Transformers.js compatibility.
+const MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
 
 const SYSTEM_PROMPT = `You are a strict but fair trivia judge. You are evaluating a user's answer to a trivia question. 
 You will be given the Question, the Exact Expected Answer, and the User's Answer.
 Your rule: Determine if the User's Answer is semantically correct. Ignore minor typos, spelling errors, or slight variations in phrasing (e.g., 'A brothel' equals 'A whorehouse'). Do NOT accept overly broad answers (e.g., 'A building' is incorrect if the expected answer is 'A brothel'). Do NOT accept completely wrong answers.
 Output strictly the word 'CORRECT' if they get the point, or 'INCORRECT' if they do not. Do not output any other text.`;
 
-let processor = null;
-let model = null;
+let generator = null;
 
 async function loadModel() {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
@@ -26,9 +24,7 @@ async function loadModel() {
 
   for (const device of deviceOptions) {
     try {
-      // Load processor and model separately for Qwen3.5 architecture
-      processor = await AutoProcessor.from_pretrained(MODEL_ID);
-      model = await AutoModelForConditionalGeneration.from_pretrained(MODEL_ID, {
+      generator = await pipeline('text-generation', MODEL_ID, {
         dtype: 'q4',
         device,
         progress_callback: (info) => {
@@ -50,7 +46,7 @@ self.addEventListener('message', async (event) => {
   const { type, payload } = event.data;
 
   if (type === 'judge') {
-    if (!model || !processor) {
+    if (!generator) {
       self.postMessage({
         type: 'result',
         payload: { id: payload.id, verdict: 'ERROR', error: 'Model not loaded' },
@@ -70,25 +66,19 @@ User Answer: ${userAnswer}`;
     ];
 
     try {
-      // Apply chat template and process inputs
-      const text = processor.apply_chat_template(messages, { add_generation_prompt: true });
-      const inputs = await processor(text);
-
-      // Generate output
-      const outputs = await model.generate({
-        ...inputs,
+      const output = await generator(messages, {
         max_new_tokens: 5,
         temperature: 0,
         do_sample: false,
       });
 
-      // Decode the output, skipping the input tokens
-      const decoded = processor.batch_decode(
-        outputs.slice(null, [inputs.input_ids.dims.at(-1), null]),
-        { skip_special_tokens: true }
-      );
+      // Extract the last assistant message from the generated output
+      const generated = output[0].generated_text;
+      const assistantContent = Array.isArray(generated)
+        ? (generated.at(-1)?.content ?? '')
+        : generated;
 
-      const verdict = decoded[0].trim().toUpperCase().startsWith('CORRECT')
+      const verdict = assistantContent.trim().toUpperCase().startsWith('CORRECT')
         ? 'CORRECT'
         : 'INCORRECT';
 
