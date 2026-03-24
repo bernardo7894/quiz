@@ -113,7 +113,88 @@ html, body {
   margin-top: 0.5rem;
 }
 
-/* ─── App Layout ────────────────────────────────────────────────────────────── */
+/* ─── Setup Screen ──────────────────────────────────────────────────────────── */
+.setup-card {
+  max-width: 520px;
+}
+
+.setup-section {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  text-align: left;
+}
+
+.setup-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 0.35rem;
+}
+
+.setup-hint {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.setup-hint code {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+}
+
+.csv-import-btn {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.csv-import-btn:hover {
+  border-color: var(--accent);
+  background: var(--surface2);
+}
+
+.csv-error {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--red);
+}
+
+.csv-success {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--green);
+}
+
+.start-btn {
+  width: 100%;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.start-btn:hover {
+  background: var(--accent-dark);
+}
+
+
 .app {
   display: flex;
   flex-direction: column;
