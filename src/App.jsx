@@ -386,6 +386,36 @@ export default function App() {
     }
   }, [selectedIndex, inputValue, inputState, gameOver, questions]);
 
+  // ── Navigate between unanswered questions ─────────────────────────────────
+  const navigateQuestion = useCallback((direction) => {
+    if (gameOver || questions.length === 0) return;
+    const unanswered = questions
+      .map((q, i) => ({ ...q, index: i }))
+      .filter((q) => !q.answered);
+    if (unanswered.length === 0) return;
+    const currentPos = unanswered.findIndex((q) => q.index === selectedIndex);
+    let nextPos;
+    if (direction === 'up') {
+      nextPos = currentPos <= 0 ? unanswered.length - 1 : currentPos - 1;
+    } else {
+      nextPos = currentPos >= unanswered.length - 1 ? 0 : currentPos + 1;
+    }
+    setSelectedIndex(unanswered[nextPos].index);
+  }, [gameOver, questions, selectedIndex]);
+
+  // ── Global arrow-key navigation ────────────────────────────────────────────
+  useEffect(() => {
+    if (!gameStarted || gameOver) return;
+    const onKey = (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        navigateQuestion(e.key === 'ArrowUp' ? 'up' : 'down');
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [gameStarted, gameOver, navigateQuestion]);
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') submitAnswer();
   };
