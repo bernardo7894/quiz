@@ -15,5 +15,14 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
+  server: {
+    // Enable Cross-Origin Isolation headers in dev so that SharedArrayBuffer
+    // (required by @huggingface/transformers threaded WASM) works locally
+    // without relying on the COI service worker.
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
+  },
 })
 

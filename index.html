@@ -6,6 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Trivia Judge</title>
     <meta name="description" content="A Sporcle-style trivia game with a local AI judge powered by Qwen2.5-0.5B — no server required." />
+    <script>
+      // Register a service worker that injects Cross-Origin-Opener-Policy and
+      // Cross-Origin-Embedder-Policy headers so that SharedArrayBuffer (required
+      // by the multi-threaded WASM backend of @huggingface/transformers) is
+      // available on hosts like GitHub Pages that cannot set custom headers.
+      if (typeof SharedArrayBuffer === "undefined" && "serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("./coi-serviceworker.js")
+          .then(() => window.location.reload())
+          .catch((err) => console.warn("COI service worker registration failed:", err));
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
