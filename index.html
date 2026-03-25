@@ -6,6 +6,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Trivia Judge</title>
     <meta name="description" content="A Sporcle-style trivia game with a local AI judge powered by Qwen3.5-0.8B — no server required." />
+    <script>
+      // Register a service worker that injects Cross-Origin-Opener-Policy and
+      // Cross-Origin-Embedder-Policy headers so that SharedArrayBuffer (required
+      // by the multi-threaded WASM backend of @huggingface/transformers) is
+      // available on hosts like GitHub Pages that cannot set custom headers.
+      //
+      // Listen for the 'controllerchange' event which fires only after the SW
+      // has installed, activated, and claimed this client — guaranteeing the SW
+      // is intercepting requests (and injecting COOP/COEP) before we reload.
+      // This is more reliable than calling reload() in the register().then()
+      // callback, which can fire while the SW is still in the installing state.
+      if (typeof SharedArrayBuffer === "undefined" && "serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./coi-serviceworker.js")
+          .then(() => {
+            // If this SW registration has made the SW the current controller
+            // immediately (e.g. second visit with SW already active), reload now.
+            // Otherwise wait for the controllerchange event which fires once the
+            // SW has installed, activated, and claimed this client — guaranteeing
+            // COOP/COEP headers will be in place before the next page load.
+            if (navigator.serviceWorker.controller) {
+              window.location.reload();
+            } else {
+              navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload(), { once: true });
+            }
+          })
+          .catch((err) => console.warn("COI service worker registration failed:", err));
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
