@@ -240,6 +240,20 @@ html, body {
   gap: 1.25rem;
 }
 
+.debug-toggle-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.debug-toggle-btn:hover {
+  background: var(--surface2);
+}
+
 .score {
   font-size: 1.2rem;
   font-weight: 700;

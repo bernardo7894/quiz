@@ -395,7 +395,31 @@ export default function App() {
     }
   }, [selectedIndex, inputValue, inputState, gameOver, questions]);
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
+    if (screen !== 'quiz' || gameOver) return;
+
+    // Up/Down navigation
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => {
+            if (prev === null) return 0;
+            return Math.max(0, prev - 1);
+        });
+    } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => {
+            if (prev === null) return 0;
+            return Math.min(questions.length - 1, prev + 1);
+        });
+    }
+  }, [screen, gameOver, questions.length]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+  const handleInputKeyDown = (e) => {
     if (e.key === 'Enter') submitAnswer();
   };
 
@@ -423,6 +447,13 @@ export default function App() {
       <header className="header">
         <h1 className="app-title">🧠 AI Trivia</h1>
         <div className="header-right">
+          <button 
+             className="debug-toggle-btn"
+             onClick={() => setDebugMode(!debugMode)}
+             title="Toggle Debug Mode"
+          >
+             {debugMode ? '🐞' : '⚙️'}
+          </button>
           <div className="score">
             {score} / {totalQuestions}
           </div>
@@ -477,7 +508,7 @@ export default function App() {
                   placeholder={selectedQuestion ? "Type answer..." : "Select a question first..."}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
+                  onKeyDown={handleInputKeyDown}
                   disabled={selectedIndex === null || inputState === 'judging'}
                   aria-label="Answer input"
                 />
@@ -496,9 +527,7 @@ export default function App() {
       )}
 
       <footer className="footer">
-        <span onClick={() => setDebugMode(!debugMode)} style={{cursor: 'pointer', opacity: debugMode ? 1 : 0.5}}>
-            {debugMode ? '🐞 Debug On' : 'AI judge runs locally'}
-        </span>
+        AI judge runs locally in your browser — no data leaves your device.
       </footer>
     </div>
   );
