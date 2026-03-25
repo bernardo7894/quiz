@@ -18,28 +18,35 @@ let generator = null;
 async function loadModel() {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
 
-  // Try WebGPU first, fall back to WASM
-  const deviceOptions = ['webgpu', 'wasm'];
+  // Try backends in order of preference:
+  //   1. WebGPU + q4f16  – fp16 with int4-block weights; the format published for this model
+  //   2. WASM  + q4      – 4-bit CPU path (kept as intermediate fallback)
+  //   3. WASM  + q8      – 8-bit CPU path; the library's recommended dtype for WASM
+  const deviceConfigs = [
+    { device: 'webgpu', dtype: 'q4f16' },
+    { device: 'wasm',   dtype: 'q4'    },
+    { device: 'wasm',   dtype: 'q8'    },
+  ];
   let lastError = null;
 
-  for (const device of deviceOptions) {
+  for (const { device, dtype } of deviceConfigs) {
     try {
       generator = await pipeline('text-generation', MODEL_ID, {
-        dtype: 'q4',
+        dtype,
         device,
         progress_callback: (info) => {
           self.postMessage({ type: 'loading-progress', payload: info });
         },
       });
-      self.postMessage({ type: 'ready', payload: { device } });
+      self.postMessage({ type: 'ready', payload: { device, dtype } });
       return;
     } catch (err) {
       lastError = err;
-      // Try next device option
+      // Try next configuration
     }
   }
 
-  self.postMessage({ type: 'error', payload: lastError?.message ?? 'Failed to load model' });
+  self.postMessage({ type: 'error', payload: lastError?.message || lastError?.toString() || 'Failed to load model' });
 }
 
 self.addEventListener('message', async (event) => {
