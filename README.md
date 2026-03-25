@@ -128,3 +128,7 @@ quiz/
 └── vite.config.js
 ```
 
+---
+
+*Last cache invalidation: March 25, 2026*
+
