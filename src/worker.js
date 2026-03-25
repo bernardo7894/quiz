@@ -3,10 +3,10 @@ import { pipeline, env } from '@huggingface/transformers';
 // Only use remote models from HuggingFace Hub
 env.allowLocalModels = false;
 
-// Qwen2.5-1.5B-Instruct: 1.5B parameter instruction-tuned model.
-// ONNX-converted by onnx-community for Transformers.js compatibility.
-// This model is fully supported by Transformers.js (unlike Qwen3.5 which uses unsupported qwen3_5_text architecture).
-const MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
+// Qwen3.5-0.8B-Text-ONNX: sub-1B text-generation model.
+// ONNX-converted by onnx-community specifically for Transformers.js compatibility.
+// Text-only variant; uses qwen3 architecture which is natively supported by Transformers.js v3+.
+const MODEL_ID = 'onnx-community/Qwen3.5-0.8B-Text-ONNX';
 
 const SYSTEM_PROMPT = `You are a strict but fair trivia judge. You are evaluating a user's answer to a trivia question. 
 You will be given the Question, the Exact Expected Answer, and the User's Answer.

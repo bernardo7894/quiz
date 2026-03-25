@@ -2,7 +2,7 @@
 
 A **Sporcle-style trivia game** where answers are graded by a real AI — running entirely in your browser. No server, no API keys, no cloud costs.
 
-**Model:** [onnx-community/Qwen2.5-1.5B-Instruct](https://huggingface.co/onnx-community/Qwen2.5-1.5B-Instruct) loaded locally via [Transformers.js](https://huggingface.co/docs/transformers.js).
+**Model:** [onnx-community/Qwen3.5-0.8B-Text-ONNX](https://huggingface.co/onnx-community/Qwen3.5-0.8B-Text-ONNX) loaded locally via [Transformers.js](https://huggingface.co/docs/transformers.js).
 
 ## How it works
 
@@ -16,7 +16,7 @@ A **Sporcle-style trivia game** where answers are graded by a real AI — runnin
 |---|---|
 | Frontend | React 19 + Vite 8 |
 | AI library | `@huggingface/transformers` v3 (ONNX runtime) |
-| Model | `onnx-community/Qwen2.5-1.5B-Instruct` (q4f16 for WebGPU, q8 for WASM) |
+| Model | `onnx-community/Qwen3.5-0.8B-Text-ONNX` (q4f16 for WebGPU, q8 for WASM) |
 | Inference thread | WebWorker (non-blocking UI) |
 | Hosting | GitHub Pages (fully static) |
 

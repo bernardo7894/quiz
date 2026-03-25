@@ -12,7 +12,7 @@ function LoadingScreen({ progress, statusText, error }) {
       <div className="loading-card">
         <div className="loading-icon">🧠</div>
         <h1>AI Trivia Judge</h1>
-        <p className="loading-subtitle">Powered by Qwen2.5-1.5B — running entirely in your browser</p>
+        <p className="loading-subtitle">Powered by Qwen3.5-0.8B — running entirely in your browser</p>
 
         {error ? (
           <div className="loading-error">
