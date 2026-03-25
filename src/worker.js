@@ -1,28 +1,36 @@
 import { pipeline, env } from '@huggingface/transformers';
 
-// Only use remote models from HuggingFace Hub
 env.allowLocalModels = false;
 
-// Qwen2.5-0.5B-Instruct: Smaller model that works reliably in browsers
-// 1.5B model causes WebAssembly crashes due to memory limits
-const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+// Phi-3-mini-4k-instruct: 3.8B model with excellent instruction following
+// Much better at understanding semantic equivalence than Qwen2.5-0.5B
+const MODEL_ID = 'onnx-community/Phi-3-mini-4k-instruct';
 
-const SYSTEM_PROMPT = `You are a strict but fair trivia judge. You are evaluating a user's answer to a trivia question. 
-You will be given the Question, the Exact Expected Answer, and the User's Answer.
-Your rule: Determine if the User's Answer is semantically correct. Ignore minor typos, spelling errors, or slight variations in phrasing (e.g., 'A brothel' equals 'A whorehouse'). Do NOT accept overly broad answers (e.g., 'A building' is incorrect if the expected answer is 'A brothel'). Do NOT accept completely wrong answers.
-Output strictly the word 'CORRECT' if they get the point, or 'INCORRECT' if they do not. Do not output any other text.`;
+const SYSTEM_PROMPT = `You are a trivia judge. Output ONLY one word: CORRECT or INCORRECT.
+
+Rules:
+- Accept answers with correct meaning even if wording differs
+- Accept correct numbers in different formats (e.g., "300000" = "300,000" = "3e5")
+- Accept correct units with different notation (e.g., "km/s" = "kilometers per second")
+- Reject answers that are wrong or too vague
+
+Examples:
+Q: "What is the speed of light?" Expected: "300000 km/s" User: "300000000 m/s" → CORRECT
+Q: "What is the speed of light?" Expected: "300000 km/s" User: "3e8 meters per second" → CORRECT
+Q: "Capital of France?" Expected: "Paris" User: "paris" → CORRECT
+Q: "Capital of France?" Expected: "Paris" User: "Lyon" → INCORRECT
+Q: "Who painted Mona Lisa?" Expected: "da Vinci" User: "Leonardo" → CORRECT
+Q: "Who painted Mona Lisa?" Expected: "da Vinci" User: "Michelangelo" → INCORRECT`;
 
 let generator = null;
 
 async function loadModel() {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
 
-  // Try WASM backends first (more reliable), then WebGPU
-  // Start with q8 for maximum compatibility, then try q4 for smaller memory footprint
+  // Phi-3 works best with q4 quantization
   const deviceConfigs = [
-    { device: 'wasm', dtype: 'q8' },     // Most compatible, good quality
-    { device: 'wasm', dtype: 'q4' },     // Smaller memory footprint
-    { device: 'webgpu', dtype: 'q4' },   // GPU acceleration if available
+    { device: 'wasm', dtype: 'q4' },
+    { device: 'webgpu', dtype: 'q4' },
   ];
   let lastError = null;
 
@@ -45,7 +53,6 @@ async function loadModel() {
     } catch (err) {
       lastError = err;
       console.warn(`Failed to load with ${device}/${dtype}:`, err.message);
-      // Try next configuration
     }
   }
 
@@ -71,30 +78,33 @@ self.addEventListener('message', async (event) => {
 
     const userPrompt = `Question: ${question}
 Expected Answer: ${expectedAnswer}
-User Answer: ${userAnswer}`;
+User Answer: ${userAnswer}
 
-    const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: userPrompt },
-    ];
+Judge (output ONLY CORRECT or INCORRECT):`;
 
     try {
-      const output = await generator(messages, {
-        max_new_tokens: 10,
+      const output = await generator(userPrompt, {
+        max_new_tokens: 5,
         temperature: 0,
         do_sample: false,
       });
 
-      // Extract the last assistant message from the generated output
       const generated = output[0].generated_text;
-      const assistantContent = Array.isArray(generated)
-        ? (generated.at(-1)?.content ?? '')
-        : generated;
+      const text = typeof generated === 'string' ? generated : 
+                   Array.isArray(generated) ? generated.at(-1)?.content ?? '' : 
+                   String(generated);
 
-      const verdict = assistantContent.trim().toUpperCase().startsWith('CORRECT')
-        ? 'CORRECT'
-        : 'INCORRECT';
+      // More robust parsing - look for CORRECT/INCORRECT anywhere in output
+      const upper = text.toUpperCase();
+      let verdict = 'INCORRECT';
+      
+      if (upper.includes('CORRECT') && !upper.includes('INCORRECT')) {
+        verdict = 'CORRECT';
+      } else if (upper.includes('INCORRECT')) {
+        verdict = 'INCORRECT';
+      }
 
+      console.log('Model output:', text, '| Verdict:', verdict);
       self.postMessage({ type: 'result', payload: { id, verdict } });
     } catch (err) {
       self.postMessage({
@@ -105,5 +115,4 @@ User Answer: ${userAnswer}`;
   }
 });
 
-// Auto-load the model when the worker starts
 loadModel();
