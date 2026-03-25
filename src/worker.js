@@ -3,9 +3,9 @@ import { pipeline, env } from '@huggingface/transformers';
 // Only use remote models from HuggingFace Hub
 env.allowLocalModels = false;
 
-// Qwen2.5-1.5B-Instruct: Fully supported by Transformers.js v3.8.1
-// Qwen3.5 architecture is now supported in Transformers.js v3
-const MODEL_ID = 'onnx-community/Qwen3.5-0.8B-Text-ONNX';
+// Qwen2.5-0.5B-Instruct: Smaller model that works reliably in browsers
+// 1.5B model causes WebAssembly crashes due to memory limits
+const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
 const SYSTEM_PROMPT = `You are a strict but fair trivia judge. You are evaluating a user's answer to a trivia question. 
 You will be given the Question, the Exact Expected Answer, and the User's Answer.
@@ -17,19 +17,22 @@ let generator = null;
 async function loadModel() {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
 
-  // Try backends in order of preference:
-  //   1. WebGPU + q4f16 – Best quality/speed balance
-  //   2. WebGPU + q4    – Fallback for 4-bit if q4f16 is missing
-  //   3. WASM  + q4     – CPU fallback (slow but functional)
+  // Try WASM backends first (more reliable), then WebGPU
+  // Start with q8 for maximum compatibility, then try q4 for smaller memory footprint
   const deviceConfigs = [
-    { device: 'webgpu', dtype: 'q4f16' },
-    { device: 'webgpu', dtype: 'q4' },
-    { device: 'wasm',   dtype: 'q4' },
+    { device: 'wasm', dtype: 'q8' },     // Most compatible, good quality
+    { device: 'wasm', dtype: 'q4' },     // Smaller memory footprint
+    { device: 'webgpu', dtype: 'q4' },   // GPU acceleration if available
   ];
   let lastError = null;
 
   for (const { device, dtype } of deviceConfigs) {
     try {
+      self.postMessage({ 
+        type: 'loading-progress', 
+        payload: { status: 'initiate', file: `model (${dtype})` } 
+      });
+      
       generator = await pipeline('text-generation', MODEL_ID, {
         dtype,
         device,
@@ -41,11 +44,15 @@ async function loadModel() {
       return;
     } catch (err) {
       lastError = err;
+      console.warn(`Failed to load with ${device}/${dtype}:`, err.message);
       // Try next configuration
     }
   }
 
-  self.postMessage({ type: 'error', payload: lastError?.message || lastError?.toString() || 'Failed to load model' });
+  self.postMessage({ 
+    type: 'error', 
+    payload: lastError?.message || lastError?.toString() || 'Failed to load model' 
+  });
 }
 
 self.addEventListener('message', async (event) => {
@@ -73,7 +80,7 @@ User Answer: ${userAnswer}`;
 
     try {
       const output = await generator(messages, {
-        max_new_tokens: 5,
+        max_new_tokens: 10,
         temperature: 0,
         do_sample: false,
       });
