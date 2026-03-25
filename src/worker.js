@@ -2,35 +2,41 @@ import { pipeline, env } from '@huggingface/transformers';
 
 env.allowLocalModels = false;
 
-// Phi-3-mini-4k-instruct: 3.8B model with excellent instruction following
-// Much better at understanding semantic equivalence than Qwen2.5-0.5B
-const MODEL_ID = 'onnx-community/Phi-3-mini-4k-instruct';
+// Qwen2.5-1.5B-Instruct: Good balance of size and intelligence
+const MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
 
 const SYSTEM_PROMPT = `You are a trivia judge. Output ONLY one word: CORRECT or INCORRECT.
 
-Rules:
-- Accept answers with correct meaning even if wording differs
-- Accept correct numbers in different formats (e.g., "300000" = "300,000" = "3e5")
-- Accept correct units with different notation (e.g., "km/s" = "kilometers per second")
-- Reject answers that are wrong or too vague
+Accept:
+- Correct answers with different wording
+- Numbers in any format (300000 = 300,000 = 3e5 = 300k)
+- Units with different notation (km/s = kilometers per second)
+- Common name variations (Leonardo = da Vinci = Leonardo da Vinci)
+
+Reject:
+- Wrong answers
+- Completely unrelated answers
 
 Examples:
-Q: "What is the speed of light?" Expected: "300000 km/s" User: "300000000 m/s" → CORRECT
-Q: "What is the speed of light?" Expected: "300000 km/s" User: "3e8 meters per second" → CORRECT
+Q: "Speed of light?" Expected: "300000 km/s" User: "300000000 m/s" → CORRECT
+Q: "Speed of light?" Expected: "300000 km/s" User: "3e8 m/s" → CORRECT
 Q: "Capital of France?" Expected: "Paris" User: "paris" → CORRECT
 Q: "Capital of France?" Expected: "Paris" User: "Lyon" → INCORRECT
-Q: "Who painted Mona Lisa?" Expected: "da Vinci" User: "Leonardo" → CORRECT
-Q: "Who painted Mona Lisa?" Expected: "da Vinci" User: "Michelangelo" → INCORRECT`;
+Q: "Harry Potter author?" Expected: "J.K. Rowling" User: "Joanne Rowling" → CORRECT
+Q: "Harry Potter author?" Expected: "J.K. Rowling" User: "Stephen King" → INCORRECT
+Q: "Mona Lisa painter?" Expected: "da Vinci" User: "Leonardo" → CORRECT
+Q: "Mona Lisa painter?" Expected: "da Vinci" User: "Picasso" → INCORRECT`;
 
 let generator = null;
 
 async function loadModel() {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
 
-  // Phi-3 works best with q4 quantization
+  // Try q8 first (best quality), then q4 (smaller)
+  // WASM only for stability
   const deviceConfigs = [
+    { device: 'wasm', dtype: 'q8' },
     { device: 'wasm', dtype: 'q4' },
-    { device: 'webgpu', dtype: 'q4' },
   ];
   let lastError = null;
 
@@ -44,6 +50,8 @@ async function loadModel() {
       generator = await pipeline('text-generation', MODEL_ID, {
         dtype,
         device,
+        // Increase memory budget for 1.5B model
+        max_new_tokens: 10,
         progress_callback: (info) => {
           self.postMessage({ type: 'loading-progress', payload: info });
         },
@@ -52,7 +60,7 @@ async function loadModel() {
       return;
     } catch (err) {
       lastError = err;
-      console.warn(`Failed to load with ${device}/${dtype}:`, err.message);
+      console.warn(`Failed ${device}/${dtype}:`, err.message);
     }
   }
 
@@ -77,10 +85,9 @@ self.addEventListener('message', async (event) => {
     const { id, question, expectedAnswer, userAnswer } = payload;
 
     const userPrompt = `Question: ${question}
-Expected Answer: ${expectedAnswer}
-User Answer: ${userAnswer}
-
-Judge (output ONLY CORRECT or INCORRECT):`;
+Expected: ${expectedAnswer}
+User: ${userAnswer}
+Judge (CORRECT or INCORRECT only):`;
 
     try {
       const output = await generator(userPrompt, {
@@ -89,22 +96,16 @@ Judge (output ONLY CORRECT or INCORRECT):`;
         do_sample: false,
       });
 
-      const generated = output[0].generated_text;
-      const text = typeof generated === 'string' ? generated : 
-                   Array.isArray(generated) ? generated.at(-1)?.content ?? '' : 
-                   String(generated);
-
-      // More robust parsing - look for CORRECT/INCORRECT anywhere in output
+      const text = output[0]?.generated_text || '';
       const upper = text.toUpperCase();
-      let verdict = 'INCORRECT';
       
+      // Parse output - look for CORRECT/INCORRECT
+      let verdict = 'INCORRECT';
       if (upper.includes('CORRECT') && !upper.includes('INCORRECT')) {
         verdict = 'CORRECT';
-      } else if (upper.includes('INCORRECT')) {
-        verdict = 'INCORRECT';
       }
-
-      console.log('Model output:', text, '| Verdict:', verdict);
+      
+      console.log('Output:', text.trim(), '| Verdict:', verdict);
       self.postMessage({ type: 'result', payload: { id, verdict } });
     } catch (err) {
       self.postMessage({
