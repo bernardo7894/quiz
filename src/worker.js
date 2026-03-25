@@ -3,10 +3,9 @@ import { pipeline, env } from '@huggingface/transformers';
 // Only use remote models from HuggingFace Hub
 env.allowLocalModels = false;
 
-// Qwen3.5-0.8B-Text-ONNX: sub-1B text-generation model.
-// ONNX-converted by onnx-community specifically for Transformers.js compatibility.
-// Text-only variant; uses qwen3 architecture which is natively supported by Transformers.js v3+.
-const MODEL_ID = 'onnx-community/Qwen3.5-0.8B-Text-ONNX';
+// Qwen2.5-1.5B-Instruct: Fully supported by Transformers.js v3.8.1
+// Qwen3.5 architecture is NOT yet supported in Transformers.js 3.x
+const MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
 
 const SYSTEM_PROMPT = `You are a strict but fair trivia judge. You are evaluating a user's answer to a trivia question. 
 You will be given the Question, the Exact Expected Answer, and the User's Answer.
@@ -19,9 +18,9 @@ async function loadModel() {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
 
   // Try backends in order of preference:
-  //   1. WebGPU + q4f16  – fp16 with int4-block weights; the format published for this model
-  //   2. WASM  + q4      – 4-bit CPU path (kept as intermediate fallback)
-  //   3. WASM  + q8      – 8-bit CPU path; the library's recommended dtype for WASM
+  //   1. WebGPU + q4f16 – fp16 with int4-block weights; the format published for this model
+  //   2. WASM  + q4     – 4-bit CPU path (kept as intermediate fallback)
+  //   3. WASM  + q8     – 8-bit CPU path; the library's recommended dtype for WASM
   const deviceConfigs = [
     { device: 'webgpu', dtype: 'q4f16' },
     { device: 'wasm',   dtype: 'q4'    },
