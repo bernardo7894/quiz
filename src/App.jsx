@@ -1,7 +1,142 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import Papa from 'papaparse';
 import './App.css';
 
 const TIMER_SECONDS = 600; // 10 minutes
+const STORAGE_KEY = 'quiz_questions_cache';
+
+// ─── Setup Screen ─────────────────────────────────────────────────────────────
+function SetupScreen({ onStart }) {
+  const [csvError, setCsvError] = useState('');
+  const [cachedData, setCachedData] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load cached questions', e);
+    }
+    return null;
+  });
+
+  function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          setCsvError(`CSV Error: ${results.errors[0].message}`);
+          return;
+        }
+
+        const data = results.data;
+        // Try to find question/answer columns
+        const questions = [];
+        
+        for (const row of data) {
+          // Flexible column matching
+          const qText = row['Hint'] || row['Question'] || row['question'] || row['hint'];
+          const aText = row['Answer'] || row['Expected_Answer'] || row['answer'] || row['expected_answer'];
+
+          if (qText && aText) {
+            questions.push({
+              id: crypto.randomUUID(),
+              question: qText.trim(),
+              expectedAnswer: aText.trim(),
+              answered: false,
+              status: 'unanswered'
+            });
+          }
+        }
+
+        if (questions.length === 0) {
+          setCsvError('No valid questions found. CSV must have headers like "Hint"/"Question" and "Answer".');
+          return;
+        }
+
+        // Cache and start
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+        } catch (e) {
+          console.warn('Failed to save to localStorage', e);
+        }
+        onStart(questions);
+      },
+      error: (err) => {
+        setCsvError(`Parse error: ${err.message}`);
+      }
+    });
+  }
+
+  return (
+    <div className="setup-screen">
+      <div className="setup-card">
+        <h1>🧠 AI Trivia Setup</h1>
+        <p>Import a CSV file to start the quiz.</p>
+        
+        <div className="file-upload-area">
+          <input 
+            type="file" 
+            accept=".csv" 
+            onChange={handleFileUpload} 
+            id="csv-upload" 
+            className="file-input"
+          />
+          <label htmlFor="csv-upload" className="file-label">
+            📂 Select CSV File
+          </label>
+        </div>
+
+        {csvError && <p className="error-msg">{csvError}</p>}
+
+        {cachedData && (
+          <div className="cached-data-section">
+            <p>Found a previous quiz with {cachedData.length} questions.</p>
+            <button className="primary-btn" onClick={() => onStart(cachedData)}>
+              Resume Previous Quiz
+            </button>
+            <button className="secondary-btn" onClick={() => {
+              localStorage.removeItem(STORAGE_KEY);
+              setCachedData(null);
+            }}>
+              Clear Saved Quiz
+            </button>
+          </div>
+        )}
+
+        <div className="default-option">
+          <p>Or use the default set:</p>
+          <button className="secondary-btn" onClick={() => {
+             // Fetch default questions
+             fetch('./questions.json')
+              .then(r => r.json())
+              .then(data => {
+                 const qs = data.map((q, i) => ({
+                    id: i,
+                    question: q.Question,
+                    expectedAnswer: q.Expected_Answer,
+                    answered: false,
+                    status: 'unanswered',
+                  }));
+                  onStart(qs);
+              })
+              .catch(() => setCsvError("Failed to load default questions"));
+          }}>
+            Load Default Questions
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ─── Loading Screen ───────────────────────────────────────────────────────────
 function LoadingScreen({ progress, statusText, error }) {
@@ -77,6 +212,9 @@ export default function App() {
   const [loadStatus, setLoadStatus] = useState('');
   const [loadError, setLoadError] = useState(null);
 
+  // App flow state
+  const [screen, setScreen] = useState('loading'); // 'loading' -> 'setup' -> 'quiz'
+
   // Quiz state
   const [questions, setQuestions] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(null);
@@ -115,7 +253,10 @@ export default function App() {
       if (type === 'ready') {
         setLoadProgress(1);
         setLoadStatus('Model ready!');
-        setTimeout(() => setModelState('ready'), 600);
+        setTimeout(() => {
+            setModelState('ready');
+            setScreen('setup'); // Go to setup after model load
+        }, 600);
       }
 
       if (type === 'error') {
@@ -140,28 +281,19 @@ export default function App() {
     return () => worker.terminate();
   }, []);
 
-  // ── Load questions ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    fetch('./questions.json')
-      .then((r) => r.json())
-      .then((data) => {
-        setQuestions(
-          data.map((q, i) => ({
-            id: i,
-            question: q.Question,
-            expectedAnswer: q.Expected_Answer,
-            answered: false,
-            status: 'unanswered',
-          }))
-        );
-        // Auto-select the first question once questions are loaded
-        setSelectedIndex(0);
-      });
-  }, []);
+  // ── Start Quiz ─────────────────────────────────────────────────────────────
+  const startQuiz = (loadedQuestions) => {
+    setQuestions(loadedQuestions);
+    setSelectedIndex(0);
+    setScreen('quiz');
+    setTimeLeft(TIMER_SECONDS);
+    setScore(0);
+    setGameOver(false);
+  };
 
   // ── Timer ──────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (modelState !== 'ready' || gameOver) return;
+    if (screen !== 'quiz' || gameOver) return;
     timerRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -173,14 +305,14 @@ export default function App() {
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [modelState, gameOver]);
+  }, [screen, gameOver]);
 
   // ── Focus input when question selected ────────────────────────────────────
   useEffect(() => {
-    if (modelState === 'ready' && selectedIndex !== null) {
+    if (screen === 'quiz' && selectedIndex !== null) {
       inputRef.current?.focus();
     }
-  }, [selectedIndex, modelState]);
+  }, [selectedIndex, screen]);
 
   // ── Submit answer ──────────────────────────────────────────────────────────
   const submitAnswer = useCallback(async () => {
@@ -211,11 +343,22 @@ export default function App() {
     });
 
     if (verdict === 'CORRECT') {
-      setQuestions((prev) =>
-        prev.map((item) =>
+      setQuestions((prev) => {
+        const updated = prev.map((item) =>
           item.id === q.id ? { ...item, answered: true, status: 'correct' } : item
-        )
-      );
+        );
+        // Persist progress if using localStorage
+        // Note: For simplicity, we just save the initial list. If we want to save progress, we'd update here.
+        // Let's update storage if valid
+        try {
+             if (localStorage.getItem(STORAGE_KEY)) {
+                 localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+             }
+        } catch {
+          // ignore
+        }
+        return updated;
+      });
       setScore((s) => s + 1);
       setInputValue('');
       setInputState('idle');
@@ -261,6 +404,10 @@ export default function App() {
     );
   }
 
+  if (screen === 'setup') {
+      return <SetupScreen onStart={startQuiz} />;
+  }
+
   const totalQuestions = questions.length;
   const selectedQuestion = selectedIndex !== null ? questions[selectedIndex] : null;
 
@@ -285,18 +432,11 @@ export default function App() {
           <button
             className="restart-btn"
             onClick={() => {
-              setScore(0);
-              setTimeLeft(TIMER_SECONDS);
-              setGameOver(false);
-              setSelectedIndex(null);
-              setInputValue('');
-              setInputState('idle');
-              setQuestions((prev) =>
-                prev.map((q) => ({ ...q, answered: false, status: 'unanswered' }))
-              );
+               // Reset logic
+               setScreen('setup'); // Go back to setup to choose new quiz or same
             }}
           >
-            Play Again
+            New Game
           </button>
         </div>
       )}
