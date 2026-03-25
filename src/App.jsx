@@ -132,6 +132,11 @@ export default function App() {
       }
     });
 
+    worker.addEventListener('error', (event) => {
+      setLoadError(event.error?.message || event.message || 'Unexpected worker error');
+      setModelState('error');
+    });
+
     return () => worker.terminate();
   }, []);
 
