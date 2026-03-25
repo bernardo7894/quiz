@@ -27,12 +27,22 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Build
         run: npm run build
+
+      - name: Verify dist folder exists
+        run: |
+          if [ ! -d "dist" ]; then
+            echo "ERROR: dist folder not found after build!"
+            ls -la
+            exit 1
+          fi
+          ls -la dist/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
