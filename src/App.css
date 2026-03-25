@@ -300,10 +300,22 @@ html, body {
   background: var(--accent-dark);
 }
 
-/* ─── Input Section ─────────────────────────────────────────────────────────── */
-.input-section {
-  padding: 1rem 0;
-  border-bottom: 1px solid var(--border);
+/* ─── Input Section Fixed ─────────────────────────────────────────────────────────── */
+.input-section-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border-top: 1px solid var(--accent);
+  padding: 1rem;
+  z-index: 50;
+  box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
+}
+
+.input-container-inner {
+    max-width: 900px;
+    margin: 0 auto;
 }
 
 .input-prompt {
@@ -324,12 +336,12 @@ html, body {
 
 .answer-input {
   flex: 1;
-  background: var(--surface);
+  background: var(--bg);
   border: 2px solid var(--border);
   border-radius: var(--radius);
   color: var(--text);
   font-size: 1rem;
-  padding: 0.65rem 1rem;
+  padding: 0.75rem 1rem;
   outline: none;
   transition: border-color 0.2s, background 0.2s;
 }
@@ -358,26 +370,29 @@ html, body {
   80% { transform: translateX(4px); }
 }
 
-/* ─── Spinner ────────────────────────────────────────────────────────────────── */
-.spinner {
-  display: inline-block;
-  width: 22px;
-  height: 22px;
-  border: 3px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  flex-shrink: 0;
-  animation: spin 0.7s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+/* ─── Debug Panel ───────────────────────────────────────────────────────────── */
+.debug-panel {
+    position: fixed;
+    top: 60px;
+    right: 10px;
+    background: #000;
+    color: #0f0;
+    font-family: monospace;
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    border: 1px solid #0f0;
+    max-width: 300px;
+    max-height: 400px;
+    z-index: 200;
 }
 
 /* ─── Question List ─────────────────────────────────────────────────────────── */
 .question-list {
   flex: 1;
-  padding: 0.75rem 0;
+  padding: 0.75rem 0 100px 0; /* Add bottom padding for fixed input */
   display: flex;
   flex-direction: column;
   gap: 0.4rem;

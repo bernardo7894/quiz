@@ -223,6 +223,8 @@ export default function App() {
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(TIMER_SECONDS);
   const [gameOver, setGameOver] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
+  const [lastDebugLog, setLastDebugLog] = useState(null);
 
   const workerRef = useRef(null);
   const inputRef = useRef(null);
@@ -265,10 +267,13 @@ export default function App() {
       }
 
       if (type === 'result') {
-        const { id, verdict } = payload;
+        const { id, verdict, debugInfo } = payload;
         if (pendingRef.current[id]) {
           pendingRef.current[id](verdict);
           delete pendingRef.current[id];
+        }
+        if (debugInfo) {
+           setLastDebugLog(debugInfo);
         }
       }
     });
@@ -338,6 +343,7 @@ export default function App() {
           question: q.question,
           expectedAnswer: q.expectedAnswer,
           userAnswer: inputValue.trim(),
+          debug: debugMode
         },
       });
     });
@@ -441,31 +447,6 @@ export default function App() {
         </div>
       )}
 
-      {/* Answer Input */}
-      {!gameOver && (
-        <div className="input-section">
-          <div className="input-prompt">
-            {selectedQuestion
-              ? `Answering: "${selectedQuestion.question}"`
-              : 'Click a question below to select it'}
-          </div>
-          <div className="input-row">
-            <input
-              ref={inputRef}
-              type="text"
-              className={`answer-input ${inputState}`}
-              placeholder="Type your answer and press Enter…"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={selectedIndex === null || inputState === 'judging'}
-              aria-label="Answer input"
-            />
-            {inputState === 'judging' && <span className="spinner" aria-label="Judging…" />}
-          </div>
-        </div>
-      )}
-
       {/* Question Grid */}
       <main className="question-list">
         {questions.map((item, i) => (
@@ -479,8 +460,45 @@ export default function App() {
         ))}
       </main>
 
+      {/* Fixed Bottom Input */}
+      {!gameOver && (
+        <div className="input-section-fixed">
+          <div className="input-container-inner">
+             <div className="input-prompt">
+                {selectedQuestion
+                  ? `Answering Q${selectedIndex + 1}: ${selectedQuestion.question}`
+                  : 'Select a question to answer'}
+              </div>
+              <div className="input-row">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className={`answer-input ${inputState}`}
+                  placeholder={selectedQuestion ? "Type answer..." : "Select a question first..."}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  disabled={selectedIndex === null || inputState === 'judging'}
+                  aria-label="Answer input"
+                />
+                {inputState === 'judging' && <span className="spinner" aria-label="Judging…" />}
+              </div>
+          </div>
+        </div>
+      )}
+
+      {debugMode && lastDebugLog && (
+        <div className="debug-panel">
+            <h4>Debug Info</h4>
+            <pre>{JSON.stringify(lastDebugLog, null, 2)}</pre>
+            <button onClick={() => setLastDebugLog(null)}>Clear</button>
+        </div>
+      )}
+
       <footer className="footer">
-        AI judge runs locally in your browser — no data leaves your device.
+        <span onClick={() => setDebugMode(!debugMode)} style={{cursor: 'pointer', opacity: debugMode ? 1 : 0.5}}>
+            {debugMode ? '🐞 Debug On' : 'AI judge runs locally'}
+        </span>
       </footer>
     </div>
   );

@@ -96,7 +96,8 @@ self.addEventListener('message', async (event) => {
       return;
     }
 
-    const { id, question, expectedAnswer, userAnswer } = payload;
+    const { id, question, expectedAnswer, userAnswer, debug } = payload;
+    const startTime = performance.now();
 
     const userPrompt = `<quiz_question>${question}</quiz_question>
 <quiz_answer>${expectedAnswer}</quiz_answer>
@@ -114,6 +115,9 @@ self.addEventListener('message', async (event) => {
         do_sample: false,
       });
 
+      const endTime = performance.now();
+      const executionTime = endTime - startTime;
+
       // Extract the last assistant message from the generated output
       const generated = output[0].generated_text;
       const assistantContent = Array.isArray(generated)
@@ -124,7 +128,17 @@ self.addEventListener('message', async (event) => {
         ? 'CORRECT'
         : 'INCORRECT';
 
-      self.postMessage({ type: 'result', payload: { id, verdict } });
+      let debugInfo = null;
+      if (debug) {
+        debugInfo = {
+            executionTimeMs: Math.round(executionTime),
+            generatedText: assistantContent,
+            fullOutput: output,
+            device: generator.device
+        };
+      }
+
+      self.postMessage({ type: 'result', payload: { id, verdict, debugInfo } });
     } catch (err) {
       self.postMessage({
         type: 'result',
