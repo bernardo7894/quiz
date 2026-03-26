@@ -56,12 +56,14 @@ async function loadModel() {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
 
   // Try backends in order of preference:
-  //   1. WebGPU + q4f16 – Best quality/speed balance
-  //   2. WebGPU + q4    – Fallback for 4-bit if q4f16 is missing
-  //   3. WASM  + q4     – CPU fallback (slow but functional)
+  //   1. WebGPU + q4     – Standard 4-bit (Fastest/Most Compatible for RTX cards)
+  //   2. WebGPU + fp16   – Full FP16 (High quality, uses ~2GB VRAM)
+  //   3. WebGPU + q4f16  – New format (Can be slow on some drivers)
+  //   4. WASM  + q4      – CPU fallback
   const deviceConfigs = [
-    { device: 'webgpu', dtype: 'q4f16' },
     { device: 'webgpu', dtype: 'q4' },
+    { device: 'webgpu', dtype: 'fp16' },
+    { device: 'webgpu', dtype: 'q4f16' },
     { device: 'wasm',   dtype: 'q4' },
   ];
   
