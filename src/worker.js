@@ -99,6 +99,7 @@ self.addEventListener('message', async (event) => {
         max_new_tokens: 5,
         temperature: 0,
         do_sample: false,
+        // Return only the completion to reduce payload and processing overhead.
         return_full_text: false,
       });
 

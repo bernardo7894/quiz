@@ -577,7 +577,7 @@ export default function App() {
             <h4>🐞 AI Debugger</h4>
             <div className="debug-prompt-controls">
               <button type="button" className="secondary-btn" onClick={() => setSystemPrompt(FULL_SYSTEM_PROMPT)}>
-                Current Prompt
+                Full Prompt
               </button>
               <button type="button" className="secondary-btn" onClick={() => setSystemPrompt(COMPACT_SYSTEM_PROMPT)}>
                 Compact Prompt
