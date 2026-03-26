@@ -16,7 +16,7 @@ A **Sporcle-style trivia game** where answers are graded by a real AI — runnin
 |---|---|
 | Frontend | React 19 + Vite 8 |
 | AI library | `@huggingface/transformers` v3 (ONNX runtime) |
-| Model | `onnx-community/Qwen3.5-0.8B-Text-ONNX` (q4f16 for WebGPU, q8 then fp32 for WASM fallback) |
+| Model | `onnx-community/Qwen3.5-0.8B-Text-ONNX` (WebGPU q4/fp16) |
 | Inference thread | WebWorker (non-blocking UI) |
 | Hosting | GitHub Pages (fully static) |
 
@@ -32,7 +32,7 @@ npm install
 npm run dev
 ```
 
-> **Browser requirement:** Chrome 113+ (WebGPU) or any modern browser with WebAssembly support as fallback.
+> **Browser requirement:** Chrome 113+ (WebGPU).
 
 ---
 

@@ -58,10 +58,10 @@ Rules:
 Output only one exact word: CORRECT, INCORRECT, or INVALID. No extra text.`;
 const DEFAULT_DTYPE_ORDER = ['q4', 'fp16'];
 const MODEL_LOAD_PRESETS = [
-  { value: 'auto', label: 'Auto (WebGPU q4 → fp16 → WASM q8 → fp32)' },
+  { value: 'auto', label: 'Auto (WebGPU q4 → fp16)' },
   { value: 'webgpu_q4', label: 'WebGPU q4 only' },
   { value: 'webgpu_fp16', label: 'WebGPU fp16 only' },
-  { value: 'wasm', label: 'WASM (q8 → fp32)' },
+  { value: 'wasm', label: 'WASM (unsupported for this model)', disabled: true },
 ];
 
 // ─── Setup Screen ─────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ function LoadingScreen({ progress, statusText, error }) {
           <div className="loading-error">
             <p>⚠️ Failed to load model: {error}</p>
             <p className="loading-error-hint">
-              Make sure you&apos;re using a WebGPU-capable browser (Chrome 113+) or a browser with WebAssembly support.
+              Make sure you&apos;re using a WebGPU-capable browser (Chrome 113+).
             </p>
           </div>
         ) : (
@@ -687,7 +687,9 @@ export default function App() {
                 onChange={(e) => setModelLoadPreset(e.target.value)}
               >
                 {MODEL_LOAD_PRESETS.map((preset) => (
-                  <option key={preset.value} value={preset.value}>{preset.label}</option>
+                  <option key={preset.value} value={preset.value} disabled={preset.disabled}>
+                    {preset.label}
+                  </option>
                 ))}
               </select>
               <button type="button" className="secondary-btn" onClick={reloadModel} disabled={debugReloading}>
