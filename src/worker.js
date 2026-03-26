@@ -57,7 +57,19 @@ async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
   //   1. WebGPU + configured dtype order (default: q4, then fp16)
   //   2. WASM  + q4 fallback
   const deviceConfigs = getDeviceConfigs(dtypeOrder, preset);
-  
+
+  if (generator) {
+    try {
+      if (typeof generator.dispose === 'function') generator.dispose();
+      else if (typeof generator.destroy === 'function') generator.destroy();
+    } catch (cleanupError) {
+      console.warn('Failed to dispose previous model instance:', cleanupError);
+    } finally {
+      generator = null;
+      activeConfig = null;
+    }
+  }
+
   loadErrors = [];
 
   for (const config of deviceConfigs) {
