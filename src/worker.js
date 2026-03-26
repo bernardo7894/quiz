@@ -7,7 +7,7 @@ env.allowLocalModels = false;
 // Qwen3.5 architecture is now supported in Transformers.js v3
 const MODEL_ID = 'onnx-community/Qwen3.5-0.8B-Text-ONNX';
 
-const SYSTEM_PROMPT = `Validate whether <user_answer> is correct for <quiz_question> against <quiz_answer>.
+const DEFAULT_SYSTEM_PROMPT = `Validate whether <user_answer> is correct for <quiz_question> against <quiz_answer>.
 
 Rules:
 - Ignore capitalization differences.
@@ -82,7 +82,7 @@ self.addEventListener('message', async (event) => {
       return;
     }
 
-    const { id, question, expectedAnswer, userAnswer, debug } = payload;
+    const { id, question, expectedAnswer, userAnswer, debug, systemPrompt } = payload;
     const startTime = performance.now();
 
     const userPrompt = `<quiz_question>${question}</quiz_question>
@@ -90,7 +90,7 @@ self.addEventListener('message', async (event) => {
 <user_answer>${userAnswer}</user_answer>`;
 
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt || DEFAULT_SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
     ];
 
