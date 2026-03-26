@@ -22,19 +22,31 @@ Output only one exact word: CORRECT, INCORRECT, or INVALID. No extra text.`;
 let generator = null;
 let activeConfig = null;
 let loadErrors = [];
+const WEBGPU_DTYPES = ['q4', 'fp16'];
+const DEFAULT_DTYPE_ORDER = ['q4', 'fp16'];
 
-async function loadModel() {
+function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER) {
+  const seenDtypes = new Set();
+  const normalizedOrder = Array.isArray(dtypeOrder)
+    ? dtypeOrder
+      .map((value) => String(value).toLowerCase())
+      .filter((value) => WEBGPU_DTYPES.includes(value) && !seenDtypes.has(value) && seenDtypes.add(value))
+    : [];
+
+  const webGpuOrder = normalizedOrder.length > 0 ? normalizedOrder : DEFAULT_DTYPE_ORDER;
+  return [
+    ...webGpuOrder.map((dtype) => ({ device: 'webgpu', dtype })),
+    { device: 'wasm', dtype: 'q4' },
+  ];
+}
+
+async function loadModel(dtypeOrder) {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
 
   // Try backends in order of preference:
-  //   1. WebGPU + fp16   – Best compatibility for Desktop GPUs (RTX 3070). Uses ~1.5GB VRAM.
-  //   2. WebGPU + q4     – Int4 quantization (Fast if supported, but can be slow on some drivers)
-  //   3. WASM  + q4      – CPU fallback
-  const deviceConfigs = [
-    { device: 'webgpu', dtype: 'fp16' },
-    { device: 'webgpu', dtype: 'q4' },
-    { device: 'wasm',   dtype: 'q4' },
-  ];
+  //   1. WebGPU + configured dtype order (default: q4, then fp16)
+  //   2. WASM  + q4 fallback
+  const deviceConfigs = getDeviceConfigs(dtypeOrder);
   
   loadErrors = [];
 
@@ -72,6 +84,11 @@ async function loadModel() {
 
 self.addEventListener('message', async (event) => {
   const { type, payload } = event.data;
+
+  if (type === 'load-model') {
+    loadModel(payload?.dtypeOrder);
+    return;
+  }
 
   if (type === 'judge') {
     if (!generator) {
@@ -141,5 +158,4 @@ self.addEventListener('message', async (event) => {
   }
 });
 
-// Auto-load the model when the worker starts
-loadModel();
+// Model loading is triggered by the app so dtype order can be configured.
