@@ -1,3 +1,4 @@
+// Version: 1.0.1 - Prioritize q4 for speed
 import { pipeline, env } from '@huggingface/transformers';
 
 // Only use remote models from HuggingFace Hub

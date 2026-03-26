@@ -587,6 +587,28 @@ html, body {
   margin-top: auto;
 }
 
+.shortcuts-hint {
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+kbd {
+  background-color: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.2), 0 2px 0 0 rgba(255,255,255,0.7) inset;
+  color: var(--text);
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+
 /* ─── Responsive ────────────────────────────────────────────────────────────── */
 @media (max-width: 600px) {
   .app-title { font-size: 1.2rem; }

@@ -549,6 +549,10 @@ export default function App() {
       )}
 
       <footer className="footer">
+        <div className="shortcuts-hint">
+            <span>Keys: </span>
+            <kbd>↑</kbd> <kbd>↓</kbd> Navigate &nbsp;•&nbsp; <kbd>Enter</kbd> Submit
+        </div>
         AI judge runs locally in your browser — no data leaves your device.
       </footer>
     </div>
