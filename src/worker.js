@@ -62,6 +62,8 @@ async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
     try {
       if (typeof generator.dispose === 'function') generator.dispose();
       else if (typeof generator.destroy === 'function') generator.destroy();
+    } catch (cleanupError) {
+      console.warn('Failed to dispose previous model instance:', cleanupError);
     } finally {
       generator = null;
       activeConfig = null;
