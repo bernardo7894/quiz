@@ -622,7 +622,7 @@ export default function App() {
                 <strong>Status:</strong> <span>No debug response yet</span>
               </div>
             )}
-             <button className="close-debug" onClick={() => setLastDebugLog(null)}>Close</button>
+             <button className="close-debug" onClick={() => setDebugMode(false)}>Close</button>
          </div>
       )}
 
