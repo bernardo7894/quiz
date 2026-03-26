@@ -58,10 +58,10 @@ Rules:
 Output only one exact word: CORRECT, INCORRECT, or INVALID. No extra text.`;
 const DEFAULT_DTYPE_ORDER = ['q4', 'fp16'];
 const MODEL_LOAD_PRESETS = [
-  { value: 'auto', label: 'Auto (WebGPU q4 → fp16 → WASM q8)' },
+  { value: 'auto', label: 'Auto (WebGPU q4 → fp16 → WASM q8 → fp32)' },
   { value: 'webgpu_q4', label: 'WebGPU q4 only' },
   { value: 'webgpu_fp16', label: 'WebGPU fp16 only' },
-  { value: 'wasm_q4', label: 'WASM q8 only' },
+  { value: 'wasm_q4', label: 'WASM (q8 → fp32)' },
 ];
 
 // ─── Setup Screen ─────────────────────────────────────────────────────────────

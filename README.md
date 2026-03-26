@@ -16,7 +16,7 @@ A **Sporcle-style trivia game** where answers are graded by a real AI — runnin
 |---|---|
 | Frontend | React 19 + Vite 8 |
 | AI library | `@huggingface/transformers` v3 (ONNX runtime) |
-| Model | `onnx-community/Qwen3.5-0.8B-Text-ONNX` (q4f16 for WebGPU, q8 for WASM) |
+| Model | `onnx-community/Qwen3.5-0.8B-Text-ONNX` (q4f16 for WebGPU, q8 then fp32 for WASM fallback) |
 | Inference thread | WebWorker (non-blocking UI) |
 | Hosting | GitHub Pages (fully static) |
 
@@ -131,4 +131,3 @@ quiz/
 ---
 
 *Last cache invalidation: March 25, 2026*
-
