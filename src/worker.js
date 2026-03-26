@@ -26,10 +26,11 @@ const WEBGPU_DTYPES = ['q4', 'fp16'];
 const DEFAULT_DTYPE_ORDER = ['q4', 'fp16'];
 
 function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER) {
+  const seenDtypes = new Set();
   const normalizedOrder = Array.isArray(dtypeOrder)
     ? dtypeOrder
       .map((value) => String(value).toLowerCase())
-      .filter((value, index, arr) => WEBGPU_DTYPES.includes(value) && arr.indexOf(value) === index)
+      .filter((value) => WEBGPU_DTYPES.includes(value) && !seenDtypes.has(value) && seenDtypes.add(value))
     : [];
 
   const webGpuOrder = normalizedOrder.length > 0 ? normalizedOrder : DEFAULT_DTYPE_ORDER;
