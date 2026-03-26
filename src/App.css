@@ -425,6 +425,58 @@ html, body {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.debug-section {
+  margin-bottom: 0.9rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.debug-label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+}
+
+.debug-select,
+.debug-input {
+  width: 100%;
+  background: #000;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.82rem;
+  margin-bottom: 0.6rem;
+}
+
+.debug-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+.debug-checkbox-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.45rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.debug-inline-status {
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+}
+
+.debug-inline-error {
+  color: var(--red);
 }
 
 .debug-prompt-editor {
