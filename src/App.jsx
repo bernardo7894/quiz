@@ -61,7 +61,7 @@ const MODEL_LOAD_PRESETS = [
   { value: 'auto', label: 'Auto (WebGPU q4 → fp16 → WASM q8 → fp32)' },
   { value: 'webgpu_q4', label: 'WebGPU q4 only' },
   { value: 'webgpu_fp16', label: 'WebGPU fp16 only' },
-  { value: 'wasm_q4', label: 'WASM (q8 → fp32)' },
+  { value: 'wasm', label: 'WASM (q8 → fp32)' },
 ];
 
 // ─── Setup Screen ─────────────────────────────────────────────────────────────

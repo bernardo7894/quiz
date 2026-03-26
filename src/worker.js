@@ -33,7 +33,7 @@ function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER, preset = 'auto') {
   if (preset === 'webgpu_fp16') {
     return [{ device: 'webgpu', dtype: 'fp16' }];
   }
-  if (preset === 'wasm_q4') {
+  if (preset === 'wasm') {
     return WASM_DTYPE_ORDER.map((dtype) => ({ device: 'wasm', dtype }));
   }
 
