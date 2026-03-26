@@ -57,6 +57,12 @@ Rules:
 
 Output only one exact word: CORRECT, INCORRECT, or INVALID. No extra text.`;
 const DEFAULT_DTYPE_ORDER = ['q4', 'fp16'];
+const MODEL_LOAD_PRESETS = [
+  { value: 'auto', label: 'Auto (WebGPU q4 → fp16 → WASM)' },
+  { value: 'webgpu_q4', label: 'WebGPU q4 only' },
+  { value: 'webgpu_fp16', label: 'WebGPU fp16 only' },
+  { value: 'wasm_q4', label: 'WASM q4 only' },
+];
 
 // ─── Setup Screen ─────────────────────────────────────────────────────────────
 function SetupScreen({ onStart }) {
@@ -279,6 +285,20 @@ export default function App() {
   const [debugMode, setDebugMode] = useState(false);
   const [lastDebugLog, setLastDebugLog] = useState(null);
   const [systemPrompt, setSystemPrompt] = useState(COMPACT_SYSTEM_PROMPT);
+  const [collectDebugPayload, setCollectDebugPayload] = useState(true);
+  const [modelLoadPreset, setModelLoadPreset] = useState('auto');
+  const [debugLoadStatus, setDebugLoadStatus] = useState('');
+  const [debugLoadError, setDebugLoadError] = useState('');
+  const [debugReloading, setDebugReloading] = useState(false);
+  const [activeBackend, setActiveBackend] = useState(null);
+  const [inferenceOptions, setInferenceOptions] = useState({
+    maxNewTokens: 5,
+    temperature: 0,
+    doSample: false,
+    topP: 1,
+    repetitionPenalty: 1,
+    includeFullOutput: true,
+  });
 
   const workerRef = useRef(null);
   const inputRef = useRef(null);
@@ -304,9 +324,26 @@ export default function App() {
           setLoadProgress(1);
           setLoadStatus('Model loaded! Starting quiz…');
         }
+        if (payload.reason === 'reload') {
+          if (payload.status === 'download' || payload.status === 'progress') {
+            const pct = typeof payload.progress === 'number' ? `${Math.round(payload.progress)}%` : '';
+            setDebugLoadStatus(`Reloading ${payload.file ?? 'model'} ${pct}`.trim());
+          } else if (payload.status === 'initiate') {
+            setDebugLoadStatus(`Initialising ${payload.file ?? 'model'}…`);
+          } else if (payload.status === 'done') {
+            setDebugLoadStatus('Reload complete');
+          }
+        }
       }
 
       if (type === 'ready') {
+        setActiveBackend(payload?.activeConfig ?? null);
+        if (payload?.reason === 'reload') {
+          setDebugReloading(false);
+          setDebugLoadError('');
+          setDebugLoadStatus(`Loaded ${payload?.activeConfig?.device ?? 'unknown'} (${payload?.activeConfig?.dtype ?? 'unknown'})`);
+          return;
+        }
         setLoadProgress(1);
         setLoadStatus('Model ready!');
         setTimeout(() => {
@@ -316,6 +353,11 @@ export default function App() {
       }
 
       if (type === 'error') {
+        if (payload?.reason === 'reload') {
+          setDebugReloading(false);
+          setDebugLoadError(payload.message ?? 'Reload failed');
+          return;
+        }
         setLoadError(payload);
         setModelState('error');
       }
@@ -334,7 +376,7 @@ export default function App() {
 
     worker.postMessage({
       type: 'load-model',
-      payload: { dtypeOrder: DEFAULT_DTYPE_ORDER },
+      payload: { dtypeOrder: DEFAULT_DTYPE_ORDER, preset: 'auto', reason: 'initial' },
     });
 
     worker.addEventListener('error', (event) => {
@@ -402,8 +444,9 @@ export default function App() {
           question: q.question,
           expectedAnswer: q.expectedAnswer,
           userAnswer: inputValue.trim(),
-          debug: debugMode,
-          systemPrompt
+          debug: debugMode && collectDebugPayload,
+          systemPrompt,
+          inferenceOptions,
         },
       });
     });
@@ -453,7 +496,7 @@ export default function App() {
         inputRef.current?.focus();
       }, 800);
     }
-  }, [selectedIndex, inputValue, inputState, gameOver, questions, debugMode, systemPrompt]);
+  }, [selectedIndex, inputValue, inputState, gameOver, questions, debugMode, collectDebugPayload, systemPrompt, inferenceOptions]);
 
   const handleKeyDown = useCallback((e) => {
     if (screen !== 'quiz' || gameOver) return;
@@ -482,6 +525,56 @@ export default function App() {
   const handleInputKeyDown = (e) => {
     if (e.key === 'Enter') submitAnswer();
   };
+
+  const applyInferencePreset = useCallback((preset) => {
+    if (preset === 'speed') {
+      setInferenceOptions((prev) => ({
+        ...prev,
+        maxNewTokens: 3,
+        temperature: 0,
+        doSample: false,
+        topP: 1,
+        repetitionPenalty: 1,
+      }));
+      return;
+    }
+    if (preset === 'balanced') {
+      setInferenceOptions((prev) => ({
+        ...prev,
+        maxNewTokens: 5,
+        temperature: 0,
+        doSample: false,
+        topP: 1,
+        repetitionPenalty: 1,
+      }));
+      return;
+    }
+    if (preset === 'explore') {
+      setInferenceOptions((prev) => ({
+        ...prev,
+        maxNewTokens: 8,
+        temperature: 0.5,
+        doSample: true,
+        topP: 0.9,
+        repetitionPenalty: 1.05,
+      }));
+    }
+  }, []);
+
+  const reloadModel = useCallback(() => {
+    if (!workerRef.current || debugReloading) return;
+    setDebugReloading(true);
+    setDebugLoadError('');
+    setDebugLoadStatus('Starting reload…');
+    workerRef.current.postMessage({
+      type: 'load-model',
+      payload: {
+        dtypeOrder: DEFAULT_DTYPE_ORDER,
+        preset: modelLoadPreset,
+        reason: 'reload',
+      },
+    });
+  }, [debugReloading, modelLoadPreset]);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   if (modelState === 'loading' || modelState === 'error') {
@@ -581,6 +674,32 @@ export default function App() {
       {debugMode && (
         <div className="debug-panel">
             <h4>🐞 AI Debugger</h4>
+            <div className="debug-row">
+              <strong>Active Backend:</strong>
+              <span>{activeBackend ? `${activeBackend.device} (${activeBackend.dtype})` : 'unknown'}</span>
+            </div>
+            <div className="debug-section">
+              <label className="debug-label" htmlFor="model-load-preset">Model Backend Preset</label>
+              <select
+                id="model-load-preset"
+                className="debug-select"
+                value={modelLoadPreset}
+                onChange={(e) => setModelLoadPreset(e.target.value)}
+              >
+                {MODEL_LOAD_PRESETS.map((preset) => (
+                  <option key={preset.value} value={preset.value}>{preset.label}</option>
+                ))}
+              </select>
+              <button type="button" className="secondary-btn" onClick={reloadModel} disabled={debugReloading}>
+                {debugReloading ? 'Reloading…' : 'Reload Model with Preset'}
+              </button>
+              {(debugLoadStatus || debugLoadError) && (
+                <div className="debug-inline-status">
+                  {debugLoadStatus && <div>{debugLoadStatus}</div>}
+                  {debugLoadError && <div className="debug-inline-error">{debugLoadError}</div>}
+                </div>
+              )}
+            </div>
             <div className="debug-prompt-controls">
               <button type="button" className="secondary-btn" onClick={() => setSystemPrompt(FULL_SYSTEM_PROMPT)}>
                 Full Prompt
@@ -588,6 +707,106 @@ export default function App() {
               <button type="button" className="secondary-btn" onClick={() => setSystemPrompt(COMPACT_SYSTEM_PROMPT)}>
                 Compact Prompt
               </button>
+            </div>
+            <div className="debug-section">
+              <div className="debug-prompt-controls">
+                <button type="button" className="secondary-btn" onClick={() => applyInferencePreset('speed')}>
+                  Speed Preset
+                </button>
+                <button type="button" className="secondary-btn" onClick={() => applyInferencePreset('balanced')}>
+                  Balanced Preset
+                </button>
+                <button type="button" className="secondary-btn" onClick={() => applyInferencePreset('explore')}>
+                  Exploratory Preset
+                </button>
+              </div>
+              <div className="debug-grid">
+                <label className="debug-label" htmlFor="max-new-tokens">Max New Tokens</label>
+                <input
+                  id="max-new-tokens"
+                  className="debug-input"
+                  type="number"
+                  min={1}
+                  max={32}
+                  value={inferenceOptions.maxNewTokens}
+                  onChange={(e) => setInferenceOptions((prev) => ({
+                    ...prev,
+                    maxNewTokens: Number(e.target.value || 1),
+                  }))}
+                />
+                <label className="debug-label" htmlFor="temperature">Temperature</label>
+                <input
+                  id="temperature"
+                  className="debug-input"
+                  type="number"
+                  min={0}
+                  max={2}
+                  step={0.05}
+                  value={inferenceOptions.temperature}
+                  onChange={(e) => setInferenceOptions((prev) => ({
+                    ...prev,
+                    temperature: Number(e.target.value || 0),
+                  }))}
+                />
+                <label className="debug-label" htmlFor="top-p">Top-p</label>
+                <input
+                  id="top-p"
+                  className="debug-input"
+                  type="number"
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                  value={inferenceOptions.topP}
+                  onChange={(e) => setInferenceOptions((prev) => ({
+                    ...prev,
+                    topP: Number(e.target.value || 1),
+                  }))}
+                />
+                <label className="debug-label" htmlFor="repetition-penalty">Repetition Penalty</label>
+                <input
+                  id="repetition-penalty"
+                  className="debug-input"
+                  type="number"
+                  min={0.8}
+                  max={2}
+                  step={0.05}
+                  value={inferenceOptions.repetitionPenalty}
+                  onChange={(e) => setInferenceOptions((prev) => ({
+                    ...prev,
+                    repetitionPenalty: Number(e.target.value || 1),
+                  }))}
+                />
+              </div>
+              <label className="debug-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={inferenceOptions.doSample}
+                  onChange={(e) => setInferenceOptions((prev) => ({
+                    ...prev,
+                    doSample: e.target.checked,
+                  }))}
+                />
+                <span>Enable sampling (do_sample)</span>
+              </label>
+              <label className="debug-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={collectDebugPayload}
+                  onChange={(e) => setCollectDebugPayload(e.target.checked)}
+                />
+                <span>Collect per-answer debug payload</span>
+              </label>
+              <label className="debug-checkbox-row">
+                <input
+                  type="checkbox"
+                  checked={inferenceOptions.includeFullOutput}
+                  onChange={(e) => setInferenceOptions((prev) => ({
+                    ...prev,
+                    includeFullOutput: e.target.checked,
+                  }))}
+                />
+                <span>Include raw model output in debug payload</span>
+              </label>
             </div>
             <textarea
               className="debug-prompt-editor"
@@ -606,7 +825,13 @@ export default function App() {
                 <strong>Execution Time:</strong> <span>{lastDebugLog.executionTimeMs} ms</span>
             </div>
             <div className="debug-row">
+                <strong>Total Prompt Size:</strong> <span>{lastDebugLog.promptChars} chars</span>
+            </div>
+            <div className="debug-row">
                 <strong>Device:</strong> <span>{lastDebugLog.device} ({lastDebugLog.dtype})</span>
+            </div>
+            <div className="debug-row">
+                <strong>Inference Settings:</strong> <span>{lastDebugLog.inferenceSummary}</span>
             </div>
             {lastDebugLog.loadErrors && (
                <div className="debug-errors">

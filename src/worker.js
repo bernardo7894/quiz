@@ -25,7 +25,17 @@ let loadErrors = [];
 const WEBGPU_DTYPES = ['q4', 'fp16'];
 const DEFAULT_DTYPE_ORDER = ['q4', 'fp16'];
 
-function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER) {
+function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER, preset = 'auto') {
+  if (preset === 'webgpu_q4') {
+    return [{ device: 'webgpu', dtype: 'q4' }];
+  }
+  if (preset === 'webgpu_fp16') {
+    return [{ device: 'webgpu', dtype: 'fp16' }];
+  }
+  if (preset === 'wasm_q4') {
+    return [{ device: 'wasm', dtype: 'q4' }];
+  }
+
   const seenDtypes = new Set();
   const normalizedOrder = Array.isArray(dtypeOrder)
     ? dtypeOrder
@@ -40,13 +50,13 @@ function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER) {
   ];
 }
 
-async function loadModel(dtypeOrder) {
-  self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
+async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
+  self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID, reason } });
 
   // Try backends in order of preference:
   //   1. WebGPU + configured dtype order (default: q4, then fp16)
   //   2. WASM  + q4 fallback
-  const deviceConfigs = getDeviceConfigs(dtypeOrder);
+  const deviceConfigs = getDeviceConfigs(dtypeOrder, preset);
   
   loadErrors = [];
 
@@ -59,7 +69,7 @@ async function loadModel(dtypeOrder) {
         dtype,
         device,
         progress_callback: (info) => {
-          self.postMessage({ type: 'loading-progress', payload: info });
+          self.postMessage({ type: 'loading-progress', payload: { ...info, reason } });
         },
       });
       
@@ -67,7 +77,7 @@ async function loadModel(dtypeOrder) {
       activeConfig = config;
       
       console.log(`Successfully loaded with device=${device}, dtype=${dtype}`);
-      self.postMessage({ type: 'ready', payload: activeConfig });
+      self.postMessage({ type: 'ready', payload: { activeConfig, reason } });
       return;
     } catch (err) {
       console.error(`Failed to load with device=${device}, dtype=${dtype}:`, err);
@@ -76,9 +86,12 @@ async function loadModel(dtypeOrder) {
     }
   }
 
-  self.postMessage({ 
-    type: 'error', 
-    payload: `Failed to load model on any backend. Errors: ${JSON.stringify(loadErrors)}` 
+  self.postMessage({
+    type: 'error',
+    payload: {
+      reason,
+      message: `Failed to load model on any backend. Errors: ${JSON.stringify(loadErrors)}`,
+    },
   });
 }
 
@@ -86,7 +99,7 @@ self.addEventListener('message', async (event) => {
   const { type, payload } = event.data;
 
   if (type === 'load-model') {
-    loadModel(payload?.dtypeOrder);
+    loadModel(payload?.dtypeOrder, payload?.preset, payload?.reason);
     return;
   }
 
@@ -112,10 +125,28 @@ self.addEventListener('message', async (event) => {
     ];
 
     try {
+      const options = payload?.inferenceOptions ?? {};
+      const maxNewTokens = Number.isFinite(options.maxNewTokens)
+        ? Math.min(32, Math.max(1, Math.round(options.maxNewTokens)))
+        : 5;
+      const temperature = Number.isFinite(options.temperature)
+        ? Math.min(2, Math.max(0, options.temperature))
+        : 0;
+      const topP = Number.isFinite(options.topP)
+        ? Math.min(1, Math.max(0.1, options.topP))
+        : 1;
+      const repetitionPenalty = Number.isFinite(options.repetitionPenalty)
+        ? Math.min(2, Math.max(0.8, options.repetitionPenalty))
+        : 1;
+      const doSample = Boolean(options.doSample);
+      const includeFullOutput = options.includeFullOutput !== false;
+
       const output = await generator(messages, {
-        max_new_tokens: 5,
-        temperature: 0,
-        do_sample: false,
+        max_new_tokens: maxNewTokens,
+        temperature,
+        do_sample: doSample,
+        top_p: topP,
+        repetition_penalty: repetitionPenalty,
         // Exclude input prompt/messages from output to reduce response payload.
         return_full_text: false,
       });
@@ -138,13 +169,16 @@ self.addEventListener('message', async (event) => {
 
       let debugInfo = null;
       if (debug) {
+        const promptChars = (systemPrompt || DEFAULT_SYSTEM_PROMPT).length + userPrompt.length;
         debugInfo = {
             executionTimeMs: Math.round(executionTime),
             generatedText: assistantContent,
-            fullOutput: output,
+            fullOutput: includeFullOutput ? output : undefined,
             device: activeConfig?.device || 'unknown',
             dtype: activeConfig?.dtype || 'unknown',
-            loadErrors: loadErrors.length > 0 ? loadErrors : undefined
+            loadErrors: loadErrors.length > 0 ? loadErrors : undefined,
+            promptChars,
+            inferenceSummary: `max_new_tokens=${maxNewTokens}, temperature=${temperature}, do_sample=${doSample}, top_p=${topP}, repetition_penalty=${repetitionPenalty}`,
         };
       }
 
