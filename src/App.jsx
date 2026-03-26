@@ -520,9 +520,31 @@ export default function App() {
 
       {debugMode && lastDebugLog && (
         <div className="debug-panel">
-            <h4>Debug Info</h4>
-            <pre>{JSON.stringify(lastDebugLog, null, 2)}</pre>
-            <button onClick={() => setLastDebugLog(null)}>Clear</button>
+            <h4>🐞 AI Debugger</h4>
+            <div className="debug-row">
+                <strong>Verdict:</strong> <span>{lastDebugLog.generatedText?.trim()}</span>
+            </div>
+            <div className="debug-row">
+                <strong>Execution Time:</strong> <span>{lastDebugLog.executionTimeMs} ms</span>
+            </div>
+            <div className="debug-row">
+                <strong>Device:</strong> <span>{lastDebugLog.device} ({lastDebugLog.dtype})</span>
+            </div>
+            {lastDebugLog.loadErrors && (
+               <div className="debug-errors">
+                 <strong>Load Errors (Fallback triggered):</strong>
+                 <ul>
+                   {lastDebugLog.loadErrors.map((err, i) => (
+                     <li key={i}>{err.device} ({err.dtype}): {err.error}</li>
+                   ))}
+                 </ul>
+               </div>
+            )}
+            <details>
+                <summary>Raw JSON Output</summary>
+                <pre>{JSON.stringify(lastDebugLog, null, 2)}</pre>
+            </details>
+            <button className="close-debug" onClick={() => setLastDebugLog(null)}>Close</button>
         </div>
       )}
 

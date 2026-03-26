@@ -49,6 +49,8 @@ INVALID
 INVALID`;
 
 let generator = null;
+let activeConfig = null;
+let loadErrors = [];
 
 async function loadModel() {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
@@ -62,26 +64,39 @@ async function loadModel() {
     { device: 'webgpu', dtype: 'q4' },
     { device: 'wasm',   dtype: 'q4' },
   ];
-  let lastError = null;
+  
+  loadErrors = [];
 
-  for (const { device, dtype } of deviceConfigs) {
+  for (const config of deviceConfigs) {
+    const { device, dtype } = config;
     try {
-      generator = await pipeline('text-generation', MODEL_ID, {
+      console.log(`Attempting to load with device=${device}, dtype=${dtype}...`);
+      
+      const pipe = await pipeline('text-generation', MODEL_ID, {
         dtype,
         device,
         progress_callback: (info) => {
           self.postMessage({ type: 'loading-progress', payload: info });
         },
       });
-      self.postMessage({ type: 'ready', payload: { device, dtype } });
+      
+      generator = pipe;
+      activeConfig = config;
+      
+      console.log(`Successfully loaded with device=${device}, dtype=${dtype}`);
+      self.postMessage({ type: 'ready', payload: activeConfig });
       return;
     } catch (err) {
-      lastError = err;
+      console.error(`Failed to load with device=${device}, dtype=${dtype}:`, err);
+      loadErrors.push({ device, dtype, error: err.message });
       // Try next configuration
     }
   }
 
-  self.postMessage({ type: 'error', payload: lastError?.message || lastError?.toString() || 'Failed to load model' });
+  self.postMessage({ 
+    type: 'error', 
+    payload: `Failed to load model on any backend. Errors: ${JSON.stringify(loadErrors)}` 
+  });
 }
 
 self.addEventListener('message', async (event) => {
@@ -134,7 +149,9 @@ self.addEventListener('message', async (event) => {
             executionTimeMs: Math.round(executionTime),
             generatedText: assistantContent,
             fullOutput: output,
-            device: generator.device
+            device: activeConfig?.device || 'unknown',
+            dtype: activeConfig?.dtype || 'unknown',
+            loadErrors: loadErrors.length > 0 ? loadErrors : undefined
         };
       }
 

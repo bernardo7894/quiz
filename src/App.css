@@ -387,20 +387,128 @@ html, body {
 /* ─── Debug Panel ───────────────────────────────────────────────────────────── */
 .debug-panel {
     position: fixed;
-    top: 60px;
-    right: 10px;
-    background: #000;
-    color: #0f0;
-    font-family: monospace;
-    padding: 1rem;
-    margin: 1rem 0;
-    border-radius: 8px;
-    overflow-x: auto;
-    font-size: 0.8rem;
-    border: 1px solid #0f0;
-    max-width: 300px;
-    max-height: 400px;
+    top: 70px;
+    right: 20px;
+    width: 380px;
+    max-height: 80vh;
+    background: rgba(10, 10, 15, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    color: var(--text);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
     z-index: 200;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    font-family: 'Segoe UI', sans-serif;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.debug-panel h4 {
+  margin-bottom: 1rem;
+  color: var(--accent);
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
+}
+
+.debug-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  font-family: monospace;
+}
+
+.debug-row strong {
+  color: var(--text-muted);
+  font-weight: normal;
+}
+
+.debug-row span {
+  color: var(--green);
+  font-weight: bold;
+}
+
+.debug-errors {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+}
+
+.debug-errors strong {
+  color: var(--red);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.debug-errors ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.8rem;
+  color: #ffaaaa;
+}
+
+.debug-errors li {
+  margin-bottom: 0.4rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+}
+
+.debug-panel details {
+  margin-top: 1rem;
+  background: #000;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.debug-panel summary {
+  padding: 0.5rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  background: var(--surface2);
+  user-select: none;
+}
+
+.debug-panel pre {
+  padding: 0.75rem;
+  margin: 0;
+  font-size: 0.75rem;
+  color: #aaa;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  max-height: 200px;
+}
+
+.close-debug {
+  margin-top: 1.25rem;
+  width: 100%;
+  background: var(--surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+}
+
+.close-debug:hover {
+  background: var(--surface);
+  border-color: var(--text-muted);
 }
 
 /* ─── Question List ─────────────────────────────────────────────────────────── */
