@@ -329,7 +329,7 @@ export default function App() {
             const pct = typeof payload.progress === 'number' ? `${Math.round(payload.progress)}%` : '';
             setDebugLoadStatus(`Reloading ${payload.file ?? 'model'} ${pct}`.trim());
           } else if (payload.status === 'initiate') {
-            setDebugLoadStatus(`Initialising ${payload.file ?? 'model'}…`);
+            setDebugLoadStatus(`Initializing ${payload.file ?? 'model'}…`);
           } else if (payload.status === 'done') {
             setDebugLoadStatus('Reload complete');
           }
