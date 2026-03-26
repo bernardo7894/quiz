@@ -1,4 +1,4 @@
-// Version: 1.0.1 - Prioritize q4 for speed
+// Version: 1.0.2 - Prioritize fp16 for RTX 3070
 import { pipeline, env } from '@huggingface/transformers';
 
 // Only use remote models from HuggingFace Hub
@@ -57,14 +57,12 @@ async function loadModel() {
   self.postMessage({ type: 'loading-start', payload: { modelId: MODEL_ID } });
 
   // Try backends in order of preference:
-  //   1. WebGPU + q4     – Standard 4-bit (Fastest/Most Compatible for RTX cards)
-  //   2. WebGPU + fp16   – Full FP16 (High quality, uses ~2GB VRAM)
-  //   3. WebGPU + q4f16  – New format (Can be slow on some drivers)
-  //   4. WASM  + q4      – CPU fallback
+  //   1. WebGPU + fp16   – Best compatibility for Desktop GPUs (RTX 3070). Uses ~1.5GB VRAM.
+  //   2. WebGPU + q4     – Int4 quantization (Fast if supported, but can be slow on some drivers)
+  //   3. WASM  + q4      – CPU fallback
   const deviceConfigs = [
-    { device: 'webgpu', dtype: 'q4' },
     { device: 'webgpu', dtype: 'fp16' },
-    { device: 'webgpu', dtype: 'q4f16' },
+    { device: 'webgpu', dtype: 'q4' },
     { device: 'wasm',   dtype: 'q4' },
   ];
   
