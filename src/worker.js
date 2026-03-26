@@ -3,8 +3,9 @@ import { pipeline, env } from '@huggingface/transformers';
 
 // Only use remote models from HuggingFace Hub
 env.allowLocalModels = false;
-if (env?.backends?.onnx?.webgpu) {
-  env.backends.onnx.webgpu.powerPreference = 'high-performance';
+const onnxWebGpuBackend = env?.backends?.onnx?.webgpu;
+if (typeof navigator !== 'undefined' && navigator.gpu && onnxWebGpuBackend) {
+  onnxWebGpuBackend.powerPreference = 'high-performance';
 }
 
 // Qwen3.5 architecture is now supported in Transformers.js v3
@@ -28,6 +29,7 @@ let loadErrors = [];
 const WEBGPU_DTYPES = ['q4', 'fp16'];
 const DEFAULT_DTYPE_ORDER = ['q4', 'fp16'];
 const WASM_DTYPE_ORDER = ['q8', 'fp32'];
+const WEBGPU_WARMUP_PROMPT = 'Reply with OK.';
 
 function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER, preset = 'auto') {
   if (preset === 'webgpu_q4') {
@@ -105,14 +107,16 @@ async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
       generator = pipe;
       activeConfig = config;
 
-      try {
-        await generator([{ role: 'user', content: 'Reply with OK.' }], {
-          max_new_tokens: 1,
-          do_sample: false,
-          return_full_text: false,
-        });
-      } catch (warmupError) {
-        console.warn('Warmup inference failed:', warmupError);
+      if (device === 'webgpu') {
+        try {
+          await generator([{ role: 'user', content: WEBGPU_WARMUP_PROMPT }], {
+            max_new_tokens: 1,
+            do_sample: false,
+            return_full_text: false,
+          });
+        } catch (warmupError) {
+          console.warn('Warmup inference failed:', warmupError);
+        }
       }
       
       console.log(`Successfully loaded with device=${device}, dtype=${dtype}`);
