@@ -61,7 +61,7 @@ const MODEL_LOAD_PRESETS = [
   { value: 'auto', label: 'Auto (WebGPU q4 → fp16)' },
   { value: 'webgpu_q4', label: 'WebGPU q4 only' },
   { value: 'webgpu_fp16', label: 'WebGPU fp16 only' },
-  { value: 'wasm', label: 'WASM (unsupported for this model)' },
+  { value: 'wasm', label: 'WASM (unsupported for this model)', disabled: true },
 ];
 
 // ─── Setup Screen ─────────────────────────────────────────────────────────────
@@ -687,7 +687,9 @@ export default function App() {
                 onChange={(e) => setModelLoadPreset(e.target.value)}
               >
                 {MODEL_LOAD_PRESETS.map((preset) => (
-                  <option key={preset.value} value={preset.value}>{preset.label}</option>
+                  <option key={preset.value} value={preset.value} disabled={preset.disabled}>
+                    {preset.label}
+                  </option>
                 ))}
               </select>
               <button type="button" className="secondary-btn" onClick={reloadModel} disabled={debugReloading}>

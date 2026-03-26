@@ -59,7 +59,7 @@ async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
     loadErrors = WASM_DTYPE_ORDER.map((dtype) => ({
       device: 'wasm',
       dtype,
-      error: `Backend preset is unsupported for ${MODEL_ID}; this model currently requires WebGPU`,
+      error: `WASM backend preset is unsupported for ${MODEL_ID}; this model currently requires WebGPU`,
     }));
     self.postMessage({
       type: 'error',
