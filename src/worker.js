@@ -80,6 +80,7 @@ async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
       const pipe = await pipeline('text-generation', MODEL_ID, {
         dtype,
         device,
+        ...(dtype === 'fp16' ? { use_external_data_format: 1 } : null),
         progress_callback: (info) => {
           self.postMessage({ type: 'loading-progress', payload: { ...info, reason } });
         },
