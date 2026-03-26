@@ -25,6 +25,13 @@ let loadErrors = [];
 const WEBGPU_DTYPES = ['q4', 'fp16'];
 const DEFAULT_DTYPE_ORDER = ['q4', 'fp16'];
 const WASM_DTYPE_ORDER = ['q8', 'fp32'];
+const WEBGPU_REQUIRED_ERROR =
+  `${MODEL_ID} requires WebGPU. WASM backends are not supported for this model ` +
+  '(they fail on GatherBlockQuantized kernels).';
+
+function isWebGpuAvailable() {
+  return typeof navigator !== 'undefined' && 'gpu' in navigator;
+}
 
 function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER, preset = 'auto') {
   if (preset === 'webgpu_q4') {
@@ -59,7 +66,23 @@ async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
     loadErrors = WASM_DTYPE_ORDER.map((dtype) => ({
       device: 'wasm',
       dtype,
-      error: `WASM backend preset is unsupported for ${MODEL_ID}; this model currently requires WebGPU`,
+      error: `WASM backend preset is unsupported. ${WEBGPU_REQUIRED_ERROR}`,
+    }));
+    self.postMessage({
+      type: 'error',
+      payload: {
+        reason,
+        message: `Failed to load model on any backend. Errors: ${JSON.stringify(loadErrors)}`,
+      },
+    });
+    return;
+  }
+
+  if (!isWebGpuAvailable()) {
+    loadErrors = DEFAULT_DTYPE_ORDER.map((dtype) => ({
+      device: 'webgpu',
+      dtype,
+      error: `WebGPU is unavailable in this browser/context. ${WEBGPU_REQUIRED_ERROR}`,
     }));
     self.postMessage({
       type: 'error',
