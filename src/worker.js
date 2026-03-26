@@ -34,7 +34,7 @@ function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER, preset = 'auto') {
     return [{ device: 'webgpu', dtype: 'fp16' }];
   }
   if (preset === 'wasm') {
-    return WASM_DTYPE_ORDER.map((dtype) => ({ device: 'wasm', dtype }));
+    return [];
   }
 
   const seenDtypes = new Set();
@@ -45,10 +45,7 @@ function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER, preset = 'auto') {
     : [];
 
   const webGpuOrder = normalizedOrder.length > 0 ? normalizedOrder : DEFAULT_DTYPE_ORDER;
-  return [
-    ...webGpuOrder.map((dtype) => ({ device: 'webgpu', dtype })),
-    ...WASM_DTYPE_ORDER.map((dtype) => ({ device: 'wasm', dtype })),
-  ];
+  return webGpuOrder.map((dtype) => ({ device: 'webgpu', dtype }));
 }
 
 async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
@@ -56,8 +53,23 @@ async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
 
   // Try backends in order of preference:
   //   1. WebGPU + configured dtype order (default: q4, then fp16)
-  //   2. WASM  + q8, then fp32 fallback
   const deviceConfigs = getDeviceConfigs(dtypeOrder, preset);
+
+  if (deviceConfigs.length === 0) {
+    loadErrors = WASM_DTYPE_ORDER.map((dtype) => ({
+      device: 'wasm',
+      dtype,
+      error: `Backend preset is unsupported for ${MODEL_ID}; this model currently requires WebGPU`,
+    }));
+    self.postMessage({
+      type: 'error',
+      payload: {
+        reason,
+        message: `Failed to load model on any backend. Errors: ${JSON.stringify(loadErrors)}`,
+      },
+    });
+    return;
+  }
 
   if (generator) {
     try {
