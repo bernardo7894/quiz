@@ -24,7 +24,7 @@ let activeConfig = null;
 let loadErrors = [];
 const WEBGPU_DTYPES = ['q4', 'fp16'];
 const DEFAULT_DTYPE_ORDER = ['q4', 'fp16'];
-const WASM_DTYPE = 'q8';
+const WASM_DTYPE_ORDER = ['q8', 'fp32'];
 
 function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER, preset = 'auto') {
   if (preset === 'webgpu_q4') {
@@ -33,8 +33,8 @@ function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER, preset = 'auto') {
   if (preset === 'webgpu_fp16') {
     return [{ device: 'webgpu', dtype: 'fp16' }];
   }
-  if (preset === 'wasm_q4') {
-    return [{ device: 'wasm', dtype: WASM_DTYPE }];
+  if (preset === 'wasm') {
+    return WASM_DTYPE_ORDER.map((dtype) => ({ device: 'wasm', dtype }));
   }
 
   const seenDtypes = new Set();
@@ -47,7 +47,7 @@ function getDeviceConfigs(dtypeOrder = DEFAULT_DTYPE_ORDER, preset = 'auto') {
   const webGpuOrder = normalizedOrder.length > 0 ? normalizedOrder : DEFAULT_DTYPE_ORDER;
   return [
     ...webGpuOrder.map((dtype) => ({ device: 'webgpu', dtype })),
-    { device: 'wasm', dtype: WASM_DTYPE },
+    ...WASM_DTYPE_ORDER.map((dtype) => ({ device: 'wasm', dtype })),
   ];
 }
 
@@ -56,7 +56,7 @@ async function loadModel(dtypeOrder, preset = 'auto', reason = 'initial') {
 
   // Try backends in order of preference:
   //   1. WebGPU + configured dtype order (default: q4, then fp16)
-  //   2. WASM  + q8 fallback
+  //   2. WASM  + q8, then fp32 fallback
   const deviceConfigs = getDeviceConfigs(dtypeOrder, preset);
 
   if (generator) {
