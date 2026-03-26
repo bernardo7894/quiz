@@ -421,6 +421,25 @@ html, body {
   padding-bottom: 0.75rem;
 }
 
+.debug-prompt-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.debug-prompt-editor {
+  width: 100%;
+  background: #000;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.6rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.78rem;
+  margin-bottom: 0.9rem;
+}
+
 .debug-row {
   display: flex;
   justify-content: space-between;
